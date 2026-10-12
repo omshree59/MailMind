@@ -41,7 +41,7 @@ const msgTextBlob = (msg) =>
 const FOCUS_DOMAINS = [
   {
     id: "college",
-    name: "College & Education",
+    name: "🎓 College & Education",
     description: "Courses, university notices, faculty correspondence, and campus announcements.",
     match: (msg) =>
       /\b(college|university|campus|professor|faculty|lecture|semester|syllabus|course|academic|student|dean|department|vit|iit|nit|edu|school|class)\b/i.test(
@@ -50,16 +50,16 @@ const FOCUS_DOMAINS = [
   },
   {
     id: "assignments",
-    name: "Assignments & Exams",
-    description: "Deadlines, quizzes, lab submissions, project evaluations, and exam schedules.",
+    name: "📝 Assignments & Hackathons",
+    description: "Deadlines, quizzes, lab submissions, hackathons, and exam schedules.",
     match: (msg) =>
-      /\b(assignment|exam|quiz|midterm|final|submission|grade|homework|lab|test|project|assessment|deadline|hackathon)\b/i.test(
+      /\b(assignment|exam|quiz|midterm|final|submission|grade|homework|lab|test|project|assessment|deadline|hackathon|mlh|hacktoberfest)\b/i.test(
         msgTextBlob(msg),
       ),
   },
   {
     id: "jobs",
-    name: "Jobs & Internships",
+    name: "💼 Jobs & Internships",
     description: "Recruiting, interview invites, internship offers, applications, and career updates.",
     match: (msg) =>
       /\b(job|internship|interview|recruiter|hiring|application|offer|resume|career|candidate|onboarding|stipend|role|position|linkedin)\b/i.test(
@@ -68,27 +68,27 @@ const FOCUS_DOMAINS = [
   },
   {
     id: "finance",
-    name: "Finance & Bills",
-    description: "Invoices, payment confirmations, bank alerts, tax statements, and subscriptions.",
+    name: "💳 Finance & Bills",
+    description: "Invoices, payment confirmations, bank alerts, wallet credits, and subscriptions.",
     match: (msg) =>
       msg.category === "Finance" ||
-      /\b(invoice|payment|bill|receipt|bank|transaction|statement|tax|refund|salary|upi|credit|debit|billing)\b/i.test(
+      /\b(invoice|payment|bill|receipt|bank|transaction|statement|tax|refund|salary|upi|credit|debit|billing|wallet|inr|sold)\b/i.test(
         msgTextBlob(msg),
       ),
   },
   {
     id: "orders",
-    name: "Purchases & Orders",
-    description: "Order confirmations, shipping updates, deliveries, and travel bookings.",
+    name: "📦 Purchases & Travel",
+    description: "Order confirmations, shipping updates, deliveries, and travel/event bookings.",
     match: (msg) =>
       msg.category === "Travel" ||
-      /\b(order|shipment|delivery|dispatched|tracking|amazon|flipkart|flight|hotel|booking|ticket|parcel)\b/i.test(
+      /\b(order|shipment|delivery|dispatched|tracking|amazon|flipkart|flight|hotel|booking|ticket|parcel|market)\b/i.test(
         msgTextBlob(msg),
       ),
   },
   {
     id: "security",
-    name: "Security & Access",
+    name: "🔐 Security & Access",
     description: "Security alerts, verification codes, OAuth grants, and sign-in notifications.",
     match: (msg) =>
       msg.category === "Security" ||
@@ -98,7 +98,7 @@ const FOCUS_DOMAINS = [
   },
   {
     id: "personal",
-    name: "Personal & Meetings",
+    name: "🤝 Personal & Meetings",
     description: "Direct personal correspondence, calendar invitations, and 1-on-1 scheduling.",
     match: (msg) =>
       msg.category === "Personal" ||
@@ -107,7 +107,7 @@ const FOCUS_DOMAINS = [
   },
   {
     id: "other",
-    name: "General & Notifications",
+    name: "🔔 General & Notifications",
     description: "System updates, general correspondence, and notifications in Primary Inbox.",
     match: (msg) =>
       msg.category === "Notifications" || msg.category === "Newsletters" || msg.category === "Other",
@@ -115,15 +115,15 @@ const FOCUS_DOMAINS = [
 ];
 
 const CORE_CATEGORIES = [
-  { id: "Work", name: "Work", description: "Professional projects, team threads, and workplace tasks." },
-  { id: "Personal", name: "Personal", description: "Direct personal messages and individual correspondence." },
-  { id: "Finance", name: "Finance", description: "Invoices, billing, receipts, and financial statements." },
-  { id: "Security", name: "Security", description: "Account security alerts, sign-ins, and verification notices." },
-  { id: "Meetings", name: "Meetings", description: "Calendar invitations, agenda notes, and scheduling requests." },
-  { id: "Travel", name: "Travel", description: "Itineraries, transit bookings, and accommodation details." },
-  { id: "Notifications", name: "Notifications", description: "Automated service updates that arrived in Primary Inbox." },
-  { id: "Newsletters", name: "Newsletters", description: "Digests and editorial publications in Primary Inbox." },
-  { id: "Other", name: "Other", description: "General correspondence outside standard categories." },
+  { id: "Work", name: "💼 Work", description: "Professional projects, team threads, and workplace tasks." },
+  { id: "Personal", name: "👋 Personal", description: "Direct personal messages and individual correspondence." },
+  { id: "Finance", name: "💳 Finance", description: "Invoices, billing, receipts, and financial statements." },
+  { id: "Security", name: "🔐 Security", description: "Account security alerts, sign-ins, and verification notices." },
+  { id: "Meetings", name: "📅 Meetings", description: "Calendar invitations, agenda notes, and scheduling requests." },
+  { id: "Travel", name: "✈️ Travel", description: "Itineraries, transit bookings, and event check-ins." },
+  { id: "Notifications", name: "🔔 Notifications", description: "Automated service updates that arrived in Primary Inbox." },
+  { id: "Newsletters", name: "📰 Newsletters", description: "Digests and editorial publications in Primary Inbox." },
+  { id: "Other", name: "📬 Other", description: "General correspondence outside standard categories." },
 ];
 
 const IMPORTANCE_WEIGHT = {
@@ -205,10 +205,123 @@ function formatDuration(ms) {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+/* ==========================================================================
+   Human-Friendly Formatting Helpers (Clean Senders, Subjects & URLs)
+   ========================================================================== */
+
 function senderDisplayName(sender) {
-  if (!sender) return "Unknown Sender";
-  const cleaned = String(sender).replace(/<[^>]+>/g, "").replace(/"/g, "").trim();
-  return cleaned || sender;
+  if (!sender) return "✉️ Unknown Sender";
+  const raw = String(sender).trim();
+  const namePart = raw.replace(/<[^>]+>/g, "").replace(/"/g, "").trim();
+  const emailMatch = raw.match(/<([^>]+)>/) || raw.match(/([^\s]+@[^\s]+)/);
+  const email = emailMatch ? emailMatch[1].toLowerCase() : raw.toLowerCase();
+
+  if (email.includes("mlh.io") || namePart.toLowerCase().includes("mlh")) {
+    return "🎓 Major League Hacking (MLH)";
+  }
+  if (email.includes("linkedin.com") || namePart.toLowerCase().includes("linkedin")) {
+    return `💼 ${namePart || "LinkedIn"}`;
+  }
+  if (email.includes("steampowered.com") || namePart.toLowerCase().includes("steam")) {
+    return `🎮 ${namePart || "Steam Store"}`;
+  }
+  if (email.includes("youtube.com") || namePart.toLowerCase().includes("youtube")) {
+    return `▶️ ${namePart || "YouTube"}`;
+  }
+  if (email.includes("digitalocean.com") || namePart.toLowerCase().includes("digitalocean")) {
+    return `☁️ ${namePart || "DigitalOcean"}`;
+  }
+  if (email.includes("github.com") || namePart.toLowerCase().includes("github")) {
+    return `🐙 ${namePart || "GitHub"}`;
+  }
+  if (email.includes("google.com")) {
+    return `🛡️ ${namePart || "Google"}`;
+  }
+
+  if (namePart && !namePart.includes("@")) {
+    return `✉️ ${namePart}`;
+  }
+  // Turn notifications@domain.com into a readable name
+  const domainPart = email.split("@")[1] || "";
+  const domainLabel = domainPart.split(".")[0] || email;
+  const capitalized = domainLabel.charAt(0).toUpperCase() + domainLabel.slice(1);
+  return `✉️ ${capitalized} (${email})`;
+}
+
+function cleanSubjectText(subject) {
+  if (!subject) return "(No Subject)";
+  // Remove broken question-mark surrogate artifacts like "?? " at the start
+  return String(subject)
+    .replace(/^\?{2,}\s*/, "🔴 ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Converts raw text that may contain long ugly tracking URLs into clean,
+ * human-readable HTML with neat clickable link chips.
+ */
+function formatHumanReadableHtml(rawText) {
+  if (!rawText) return "";
+  const text = String(rawText).trim();
+
+  // Case 1: LinkedIn job view URLs like "View job: https://www.linkedin.com/comm/jobs/view/4476580246/?trackingId=..."
+  const linkedInJobMatch = text.match(
+    /^(.*?)(https?:\/\/(?:www\.)?linkedin\.com\/(?:comm\/)?jobs\/view\/(\d+)[^\s]*)(.*)$/i,
+  );
+  if (linkedInJobMatch) {
+    const prefix = linkedInJobMatch[1].replace(/[:\-–\s]+$/, "").trim();
+    const fullUrl = linkedInJobMatch[2];
+    const jobId = linkedInJobMatch[3];
+    const label = prefix && prefix.toLowerCase() !== "view job" ? prefix : "Review LinkedIn Job Listing";
+    return `
+      <span>💼 ${escapeHtml(label)} <span class="muted-text">(Job #${escapeHtml(jobId)})</span></span>
+      <a class="human-link-chip" href="${escapeHtml(fullUrl)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">🔗 Open on LinkedIn ↗</a>
+    `;
+  }
+
+  // Case 2: Any text containing one or more http/https URLs
+  const urlRegex = /(https?:\/\/[^\s<>")]+)/gi;
+  if (urlRegex.test(text)) {
+    const urls = [];
+    const cleanedProse = text
+      .replace(urlRegex, (matchedUrl) => {
+        urls.push(matchedUrl);
+        return "";
+      })
+      .replace(/[:\-–\s]+$/, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
+    const chipsHtml = urls
+      .slice(0, 2)
+      .map((u) => {
+        let host = "Link";
+        try {
+          const parsed = new URL(u);
+          host = parsed.hostname.replace(/^www\./, "");
+        } catch {
+          host = "Website";
+        }
+        const friendlyHost =
+          host.includes("youtube.com") || host.includes("youtu.be")
+            ? "▶️ Watch on YouTube"
+            : host.includes("linkedin.com")
+              ? "💼 Open on LinkedIn"
+              : host.includes("github.com")
+                ? "🐙 Open on GitHub"
+                : `🔗 Open ${host}`;
+        return `<a class="human-link-chip" href="${escapeHtml(u)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">${escapeHtml(friendlyHost)} ↗</a>`;
+      })
+      .join(" ");
+
+    if (!cleanedProse) {
+      return chipsHtml;
+    }
+    return `<span>${escapeHtml(cleanedProse)}</span> ${chipsHtml}`;
+  }
+
+  return `<span>${escapeHtml(text)}</span>`;
 }
 
 function importanceBadge(importance) {
@@ -221,7 +334,8 @@ function importanceBadge(importance) {
         : imp === "Medium"
           ? "badge-medium"
           : "badge-low";
-  return `<span class="badge ${cls}">${escapeHtml(imp)}</span>`;
+  const icon = imp === "Critical" ? "🚨 " : imp === "High" ? "⚡ " : imp === "Medium" ? "📌 " : "";
+  return `<span class="badge ${cls}">${icon}${escapeHtml(imp)}</span>`;
 }
 
 function categoryBadge(category) {
@@ -267,6 +381,41 @@ async function apiJson(url, options) {
 }
 
 /* ==========================================================================
+   Dynamic Email Emoji & Ambient Background Generator
+   ========================================================================== */
+
+function initDynamicEmailBackground() {
+  const container = el("dynamic-email-bg");
+  if (!container) return;
+
+  const emojis = [
+    { icon: "✉️", left: "6%", top: "14%", size: "1.65rem", opacity: 0.16, dur: "14s", delay: "0s" },
+    { icon: "📨", left: "88%", top: "12%", size: "1.8rem", opacity: 0.15, dur: "17s", delay: "-3s" },
+    { icon: "📬", left: "48%", top: "8%", size: "1.5rem", opacity: 0.14, dur: "16s", delay: "-6s" },
+    { icon: "📩", left: "18%", top: "48%", size: "1.6rem", opacity: 0.13, dur: "19s", delay: "-2s" },
+    { icon: "📅", left: "78%", top: "42%", size: "1.55rem", opacity: 0.14, dur: "15s", delay: "-8s" },
+    { icon: "📝", left: "34%", top: "74%", size: "1.5rem", opacity: 0.13, dur: "18s", delay: "-4s" },
+    { icon: "📎", left: "92%", top: "68%", size: "1.45rem", opacity: 0.14, dur: "16s", delay: "-7s" },
+    { icon: "🔔", left: "10%", top: "82%", size: "1.55rem", opacity: 0.14, dur: "20s", delay: "-5s" },
+    { icon: "📂", left: "64%", top: "84%", size: "1.65rem", opacity: 0.14, dur: "17s", delay: "-9s" },
+    { icon: "✨", left: "56%", top: "32%", size: "1.35rem", opacity: 0.16, dur: "13s", delay: "-1s" },
+    { icon: "🏷️", left: "26%", top: "24%", size: "1.4rem", opacity: 0.13, dur: "18s", delay: "-11s" },
+    { icon: "✅", left: "82%", top: "88%", size: "1.4rem", opacity: 0.13, dur: "15s", delay: "-4s" },
+  ];
+
+  container.innerHTML = emojis
+    .map(
+      (item) => `
+      <span
+        class="floating-mail-emoji"
+        style="left:${item.left};top:${item.top};font-size:${item.size};opacity:${item.opacity};animation-duration:${item.dur};animation-delay:${item.delay};"
+      >${item.icon}</span>
+    `,
+    )
+    .join("");
+}
+
+/* ==========================================================================
    Navigation & View Switching
    ========================================================================== */
 
@@ -302,41 +451,46 @@ function getPeriodFilteredMessages() {
   return list;
 }
 
-function getAllExtractedTasks(messages) {
+function getAllExtractedTasks(messages, maxPerEmail = Infinity) {
   const items = [];
   for (const msg of messages) {
     const actions = Array.isArray(msg.actionItems) ? msg.actionItems : [];
     const deadlines = Array.isArray(msg.deadlines) ? msg.deadlines : [];
+    let addedForThisEmail = 0;
 
     if (actions.length > 0) {
-      actions.forEach((taskText, idx) => {
+      for (let idx = 0; idx < actions.length; idx += 1) {
+        if (addedForThisEmail >= maxPerEmail) break;
         items.push({
           id: `${msg.gmailId}-act-${idx}`,
-          task: taskText,
+          task: actions[idx],
+          extraCount: idx === maxPerEmail - 1 && actions.length > maxPerEmail ? actions.length - maxPerEmail : 0,
           deadline: deadlines[idx] || deadlines[0] || null,
           allDeadlines: deadlines,
           importance: msg.importance || "Low",
           category: msg.category || "Other",
           replyNeeded: Boolean(msg.replyNeeded),
           gmailId: msg.gmailId,
-          subject: msg.subject,
+          subject: cleanSubjectText(msg.subject),
           sender: msg.from,
           receivedAt: msg.receivedAt,
           gmailLink: msg.gmailLink,
         });
-      });
+        addedForThisEmail += 1;
+      }
     } else if (deadlines.length > 0) {
-      deadlines.forEach((dlText, idx) => {
+      deadlines.slice(0, maxPerEmail).forEach((dlText, idx) => {
         items.push({
           id: `${msg.gmailId}-dl-${idx}`,
-          task: `Explicit deadline in "${msg.subject}"`,
+          task: `Observed deadline in "${cleanSubjectText(msg.subject)}"`,
+          extraCount: 0,
           deadline: dlText,
           allDeadlines: deadlines,
           importance: msg.importance || "Low",
           category: msg.category || "Other",
           replyNeeded: Boolean(msg.replyNeeded),
           gmailId: msg.gmailId,
-          subject: msg.subject,
+          subject: cleanSubjectText(msg.subject),
           sender: msg.from,
           receivedAt: msg.receivedAt,
           gmailLink: msg.gmailLink,
@@ -345,14 +499,15 @@ function getAllExtractedTasks(messages) {
     } else if (msg.replyNeeded) {
       items.push({
         id: `${msg.gmailId}-reply`,
-        task: `Reply requested: ${msg.subject}`,
+        task: `Reply requested: ${cleanSubjectText(msg.subject)}`,
+        extraCount: 0,
         deadline: null,
         allDeadlines: [],
         importance: msg.importance || "Low",
         category: msg.category || "Other",
         replyNeeded: true,
         gmailId: msg.gmailId,
-        subject: msg.subject,
+        subject: cleanSubjectText(msg.subject),
         sender: msg.from,
         receivedAt: msg.receivedAt,
         gmailLink: msg.gmailLink,
@@ -532,7 +687,7 @@ function renderOverviewView() {
     ? `Last sync: ${status.lastSuccess.periodLabel} (${formatShortTime(status.lastSuccess.finishedAt)})`
     : "Last sync: no completed run yet";
 
-  // Priority Emails Requiring Attention
+  // Priority Emails Requiring Attention (Clean Human Layout)
   const priorityContainer = el("ov-priority-list");
   const attentionEmails = messages
     .filter(
@@ -560,23 +715,28 @@ function renderOverviewView() {
         return `
           <article class="stack-item" data-inspect-id="${escapeHtml(msg.gmailId)}" style="cursor:pointer">
             <div class="stack-item-main">
+              <div class="stack-item-top-row">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                  <span class="sender-pill">${escapeHtml(senderDisplayName(msg.from))}</span>
+                  ${importanceBadge(msg.importance)}
+                  ${categoryBadge(msg.category)}
+                  ${msg.replyNeeded ? `<span class="badge badge-forest">💬 Reply Needed</span>` : ""}
+                </div>
+                <span class="mono muted-text">🕒 ${escapeHtml(formatShortTime(msg.receivedAt))}</span>
+              </div>
+
               <div class="stack-item-title">
-                ${importanceBadge(msg.importance)}
-                ${categoryBadge(msg.category)}
-                <span>${escapeHtml(msg.subject)}</span>
+                <span>${escapeHtml(cleanSubjectText(msg.subject))}</span>
               </div>
-              <div class="stack-item-meta">
-                <span>${escapeHtml(senderDisplayName(msg.from))}</span>
-                <span>·</span>
-                <span>${escapeHtml(formatShortTime(msg.receivedAt))}</span>
-                ${msg.replyNeeded ? `<span>· <strong style="color:var(--accent)">Reply Needed</strong></span>` : ""}
-                ${deadlines.length > 0 ? `<span>· Deadline: ${escapeHtml(deadlines[0])}</span>` : ""}
+
+              <div class="stack-item-desc">
+                ${formatHumanReadableHtml(msg.summary)}
+                ${deadlines.length > 0 ? `<div style="margin-top:6px;font-weight:600;color:var(--high-text)">⏰ Deadline: ${escapeHtml(deadlines[0])}</div>` : ""}
               </div>
-              <div class="stack-item-desc">${escapeHtml(msg.summary)}</div>
             </div>
             <div class="stack-item-actions">
-              <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(msg.gmailId)}">Inspect</button>
-              ${msg.gmailLink ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">Gmail ↗</a>` : ""}
+              <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(msg.gmailId)}">🔍 Inspect</button>
+              ${msg.gmailLink ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">✉️ Gmail ↗</a>` : ""}
             </div>
           </article>
         `;
@@ -608,17 +768,15 @@ function renderOverviewView() {
                 <span class="badge badge-neutral">${escapeHtml(run.kind)}</span>
               </div>
               <div class="stack-item-meta">
-                <span>${run.totalProcessed} emails analyzed (${run.aiCount} Gemma AI, ${run.fallbackCount} fallback)</span>
+                <span>📧 ${run.totalProcessed} emails analyzed (${run.aiCount} Gemma AI, ${run.fallbackCount} fallback)</span>
                 <span>·</span>
-                <span>Stage: ${escapeHtml(run.stage)}</span>
-                <span>·</span>
-                <span>Duration: ${escapeHtml(formatDuration(run.durationMs))}</span>
+                <span>⏱️ ${escapeHtml(formatDuration(run.durationMs))}</span>
               </div>
-              ${run.error ? `<div class="stack-item-desc" style="color:var(--critical)">${escapeHtml(run.error)}</div>` : ""}
+              ${run.error ? `<div class="stack-item-desc" style="color:var(--critical-text)">${escapeHtml(run.error)}</div>` : ""}
             </div>
             <div class="stack-item-actions">
-              ${hasDocx ? `<a class="btn btn-secondary btn-sm" href="/api/runs/${run.id}/docx">Download .docx</a>` : ""}
-              ${hasDrive ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(run.driveUrl)}" target="_blank" rel="noreferrer">Google Drive ↗</a>` : ""}
+              ${hasDocx ? `<a class="btn btn-secondary btn-sm" href="/api/runs/${run.id}/docx">📄 Download .docx</a>` : ""}
+              ${hasDrive ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(run.driveUrl)}" target="_blank" rel="noreferrer">☁️ Google Drive ↗</a>` : ""}
             </div>
           </article>
         `;
@@ -626,9 +784,9 @@ function renderOverviewView() {
       .join("");
   }
 
-  // Detected Action Items
+  // Detected Action Items (Human-Formatted, Max 2 per email in Overview so 1 LinkedIn alert doesn't flood)
   const actionsListEl = el("ov-actions-list");
-  const extractedTasks = getAllExtractedTasks(messages).slice(0, 6);
+  const extractedTasks = getAllExtractedTasks(messages, 2).slice(0, 7);
   if (extractedTasks.length === 0) {
     actionsListEl.innerHTML = `
       <div class="empty-state">
@@ -642,12 +800,15 @@ function renderOverviewView() {
         (item) => `
         <div class="compact-item" data-inspect-id="${escapeHtml(item.gmailId)}" style="cursor:pointer">
           <div class="compact-item-top">
-            <span class="compact-item-title">${escapeHtml(item.task)}</span>
+            <div class="compact-item-title">
+              ${formatHumanReadableHtml(item.task)}
+              ${item.extraCount > 0 ? `<span class="badge badge-neutral" style="margin-left:6px">+${item.extraCount} more in email</span>` : ""}
+            </div>
             ${importanceBadge(item.importance)}
           </div>
           <div class="compact-item-sub">
-            <span>From: ${escapeHtml(senderDisplayName(item.sender))}</span>
-            ${item.deadline ? ` · <strong>Deadline: ${escapeHtml(item.deadline)}</strong>` : ""}
+            <span>From: <strong>${escapeHtml(senderDisplayName(item.sender))}</strong></span>
+            ${item.deadline ? `<span style="color:var(--high-text);font-weight:600">⏰ ${escapeHtml(item.deadline)}</span>` : `<span>${escapeHtml(formatShortTime(item.receivedAt))}</span>`}
           </div>
         </div>
       `,
@@ -657,7 +818,7 @@ function renderOverviewView() {
 
   // Recent Activity Timeline
   const timelineEl = el("ov-timeline");
-  const recentLogs = (state.logs || []).slice(0, 7);
+  const recentLogs = (state.logs || []).slice(0, 6);
   if (recentLogs.length === 0) {
     timelineEl.innerHTML = `<li class="timeline-item"><div class="timeline-msg">No activity logs recorded yet.</div></li>`;
   } else {
@@ -665,7 +826,7 @@ function renderOverviewView() {
       .map(
         (log) => `
         <li class="timeline-item ${escapeHtml(log.level)}">
-          <div class="timeline-time">${escapeHtml(formatShortTime(log.createdAt))} · ${escapeHtml(log.level.toUpperCase())}</div>
+          <div class="timeline-time">🕒 ${escapeHtml(formatShortTime(log.createdAt))} · ${escapeHtml(log.level.toUpperCase())}</div>
           <div class="timeline-msg">${escapeHtml(log.message)}</div>
         </li>
       `,
@@ -761,16 +922,16 @@ function renderInboxView() {
         <div class="email-row ${isSelected ? "selected" : ""} ${isPriority ? "priority-high" : ""}" data-email-id="${escapeHtml(msg.gmailId)}" role="listitem">
           <div class="email-row-top">
             <span class="email-sender">${escapeHtml(senderDisplayName(msg.from))}</span>
-            <span class="email-time">${escapeHtml(formatShortTime(msg.receivedAt))}</span>
+            <span class="email-time">🕒 ${escapeHtml(formatShortTime(msg.receivedAt))}</span>
           </div>
-          <div class="email-subject">${escapeHtml(msg.subject)}</div>
+          <div class="email-subject">${escapeHtml(cleanSubjectText(msg.subject))}</div>
           <div class="email-summary">${escapeHtml(msg.summary)}</div>
           <div class="email-badges">
             ${importanceBadge(msg.importance)}
             ${categoryBadge(msg.category)}
-            ${actionCount > 0 ? `<span class="badge badge-neutral">${actionCount} action${actionCount === 1 ? "" : "s"}</span>` : ""}
-            ${deadlineCount > 0 ? `<span class="badge badge-high">Deadline</span>` : ""}
-            ${msg.replyNeeded ? `<span class="badge badge-forest">Reply Needed</span>` : ""}
+            ${actionCount > 0 ? `<span class="badge badge-neutral">✅ ${actionCount} action${actionCount === 1 ? "" : "s"}</span>` : ""}
+            ${deadlineCount > 0 ? `<span class="badge badge-high">⏰ Deadline</span>` : ""}
+            ${msg.replyNeeded ? `<span class="badge badge-forest">💬 Reply Needed</span>` : ""}
           </div>
         </div>
       `;
@@ -804,49 +965,49 @@ function renderInboxDetail(msg) {
       <div class="email-badges" style="margin-bottom:10px">
         ${importanceBadge(msg.importance)}
         ${categoryBadge(msg.category)}
-        <span class="badge badge-neutral">${msg.aiSummaryAvailable ? "Gemma Local AI" : "Rule Fallback"}</span>
-        ${msg.replyNeeded ? `<span class="badge badge-forest">Reply Recommended</span>` : ""}
+        <span class="badge badge-neutral">${msg.aiSummaryAvailable ? "🤖 Gemma Local AI" : "⚙️ Rule Fallback"}</span>
+        ${msg.replyNeeded ? `<span class="badge badge-forest">💬 Reply Recommended</span>` : ""}
       </div>
-      <h2 class="detail-subject">${escapeHtml(msg.subject)}</h2>
+      <h2 class="detail-subject">${escapeHtml(cleanSubjectText(msg.subject))}</h2>
       <div class="detail-meta">
-        <div><strong>From:</strong> ${escapeHtml(msg.from)}</div>
+        <div><strong>Sender:</strong> ${escapeHtml(senderDisplayName(msg.from))} <span class="muted-text">(${escapeHtml(msg.from)})</span></div>
         <div><strong>Received:</strong> ${escapeHtml(formatDateTime(msg.receivedAt))} · <strong>Report Period:</strong> <span class="mono">${escapeHtml(msg.periodLabel)}</span></div>
       </div>
       <div class="detail-actions">
-        ${msg.gmailLink ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer">Open Original in Gmail ↗</a>` : ""}
+        ${msg.gmailLink ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer">✉️ Open Original in Gmail ↗</a>` : ""}
       </div>
     </div>
 
     <div class="detail-section">
-      <div class="detail-section-title">Concise AI Summary</div>
+      <div class="detail-section-title">✨ Concise AI Summary</div>
       <div class="detail-summary-box">
-        ${escapeHtml(msg.summary || "No summary available.")}
+        ${formatHumanReadableHtml(msg.summary || "No summary available.")}
       </div>
     </div>
 
     <div class="detail-section">
-      <div class="detail-section-title">Explicit Deadlines (${deadlines.length})</div>
+      <div class="detail-section-title">⏰ Explicit Deadlines (${deadlines.length})</div>
       ${
         deadlines.length > 0
-          ? `<ul class="detail-list">${deadlines.map((d) => `<li><strong>${escapeHtml(d)}</strong> <span class="muted-text">(verified in message text)</span></li>`).join("")}</ul>`
+          ? `<ul class="detail-list">${deadlines.map((d) => `<li><strong>${escapeHtml(d)}</strong> <span class="muted-text">(verified verbatim in email)</span></li>`).join("")}</ul>`
           : `<p class="muted-text">No explicit deadlines stated in this email.</p>`
       }
     </div>
 
     <div class="detail-section">
-      <div class="detail-section-title">Action Items (${actionItems.length})</div>
+      <div class="detail-section-title">✅ Action Items (${actionItems.length})</div>
       ${
         actionItems.length > 0
-          ? `<ul class="detail-list">${actionItems.map((a) => `<li>${escapeHtml(a)}</li>`).join("")}</ul>`
+          ? `<ul class="detail-list">${actionItems.map((a) => `<li>${formatHumanReadableHtml(a)}</li>`).join("")}</ul>`
           : `<p class="muted-text">No specific action items required.</p>`
       }
     </div>
 
     <div class="detail-section">
-      <div class="detail-section-title">Key Facts &amp; Extracted Information (${keyInfo.length})</div>
+      <div class="detail-section-title">📌 Key Facts &amp; Extracted Information (${keyInfo.length})</div>
       ${
         keyInfo.length > 0
-          ? `<ul class="detail-list">${keyInfo.map((k) => `<li>${escapeHtml(k)}</li>`).join("")}</ul>`
+          ? `<ul class="detail-list">${keyInfo.map((k) => `<li>${formatHumanReadableHtml(k)}</li>`).join("")}</ul>`
           : `<p class="muted-text">No additional key facts extracted.</p>`
       }
     </div>
@@ -935,21 +1096,22 @@ function renderCategoriesView() {
         (msg) => `
           <article class="stack-item" data-inspect-id="${escapeHtml(msg.gmailId)}" style="cursor:pointer">
             <div class="stack-item-main">
+              <div class="stack-item-top-row">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                  <span class="sender-pill">${escapeHtml(senderDisplayName(msg.from))}</span>
+                  ${importanceBadge(msg.importance)}
+                  ${categoryBadge(msg.category)}
+                </div>
+                <span class="mono muted-text">🕒 ${escapeHtml(formatShortTime(msg.receivedAt))}</span>
+              </div>
               <div class="stack-item-title">
-                ${importanceBadge(msg.importance)}
-                ${categoryBadge(msg.category)}
-                <span>${escapeHtml(msg.subject)}</span>
+                <span>${escapeHtml(cleanSubjectText(msg.subject))}</span>
               </div>
-              <div class="stack-item-meta">
-                <span>${escapeHtml(senderDisplayName(msg.from))}</span>
-                <span>·</span>
-                <span>${escapeHtml(formatShortTime(msg.receivedAt))}</span>
-              </div>
-              <div class="stack-item-desc">${escapeHtml(msg.summary)}</div>
+              <div class="stack-item-desc">${formatHumanReadableHtml(msg.summary)}</div>
             </div>
             <div class="stack-item-actions">
-              <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(msg.gmailId)}">Inspect</button>
-              ${msg.gmailLink ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">Gmail ↗</a>` : ""}
+              <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(msg.gmailId)}">🔍 Inspect</button>
+              ${msg.gmailLink ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">✉️ Gmail ↗</a>` : ""}
             </div>
           </article>
         `,
@@ -1009,18 +1171,18 @@ function renderActionsView() {
             (item) => `
           <tr>
             <td>${importanceBadge(item.importance)}</td>
-            <td><strong>${escapeHtml(item.task)}</strong></td>
+            <td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:600">${formatHumanReadableHtml(item.task)}</div></td>
             <td>
               ${
                 item.deadline
-                  ? `<span class="badge badge-high">${escapeHtml(item.deadline)}</span>`
+                  ? `<span class="badge badge-high">⏰ ${escapeHtml(item.deadline)}</span>`
                   : `<span class="muted-text">None stated</span>`
               }
             </td>
             <td>
               ${
                 item.replyNeeded
-                  ? `<span class="badge badge-forest">Reply Needed</span>`
+                  ? `<span class="badge badge-forest">💬 Reply Needed</span>`
                   : `<span class="muted-text">No reply required</span>`
               }
             </td>
@@ -1031,8 +1193,8 @@ function renderActionsView() {
             <td class="mono">${escapeHtml(formatShortTime(item.receivedAt))}</td>
             <td>
               <div style="display:flex;gap:6px">
-                <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(item.gmailId)}">Inspect</button>
-                ${item.gmailLink ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(item.gmailLink)}" target="_blank" rel="noreferrer">Gmail ↗</a>` : ""}
+                <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(item.gmailId)}">🔍 Inspect</button>
+                ${item.gmailLink ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(item.gmailLink)}" target="_blank" rel="noreferrer">✉️ Gmail ↗</a>` : ""}
               </div>
             </td>
           </tr>
@@ -1079,7 +1241,7 @@ function renderReportsView() {
           <td>
             ${statusBadge(run.status)}
             <div class="muted-text" style="margin-top:3px">Stage: ${escapeHtml(run.stage)}</div>
-            ${run.error ? `<div style="color:var(--critical);font-size:0.75rem;margin-top:4px">${escapeHtml(run.error)}</div>` : ""}
+            ${run.error ? `<div style="color:var(--critical-text);font-size:0.75rem;margin-top:4px">${escapeHtml(run.error)}</div>` : ""}
           </td>
           <td>
             <strong>${run.totalProcessed}</strong> included
@@ -1092,8 +1254,8 @@ function renderReportsView() {
           <td class="mono">${escapeHtml(formatDuration(run.durationMs))}</td>
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              ${hasDocx ? `<a class="btn btn-secondary btn-sm" href="/api/runs/${run.id}/docx">Download .docx</a>` : ""}
-              ${hasDrive ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(run.driveUrl)}" target="_blank" rel="noreferrer">Google Drive ↗</a>` : ""}
+              ${hasDocx ? `<a class="btn btn-secondary btn-sm" href="/api/runs/${run.id}/docx">📄 Download .docx</a>` : ""}
+              ${hasDrive ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(run.driveUrl)}" target="_blank" rel="noreferrer">☁️ Google Drive ↗</a>` : ""}
             </div>
           </td>
         </tr>
@@ -1164,7 +1326,7 @@ function renderAutomationView() {
         <div class="stack-item-main">
           <div class="stack-item-title">
             <span class="status-dot ${googleOk ? "ok" : "err"}"></span>
-            <span>Gmail OAuth 2.0 (Read-Only Primary Inbox)</span>
+            <span>✉️ Gmail OAuth 2.0 (Read-Only Primary Inbox)</span>
           </div>
           <div class="stack-item-desc">
             ${googleOk ? `Connected as ${escapeHtml(status.google.email || "authorized user")}. Refresh token persisted.` : "Not connected. Authorize Gmail to enable scheduled synchronization."}
@@ -1175,7 +1337,7 @@ function renderAutomationView() {
         <div class="stack-item-main">
           <div class="stack-item-title">
             <span class="status-dot ${ollamaOk ? "ok" : "warn"}"></span>
-            <span>Local Ollama &amp; Gemma Model (${escapeHtml(cfg.OLLAMA_MODEL || "gemma3:4b")})</span>
+            <span>🤖 Local Ollama &amp; Gemma Model (${escapeHtml(cfg.OLLAMA_MODEL || "gemma3:4b")})</span>
           </div>
           <div class="stack-item-desc">
             ${
@@ -1190,7 +1352,7 @@ function renderAutomationView() {
         <div class="stack-item-main">
           <div class="stack-item-title">
             <span class="status-dot ${driveOk ? "ok" : "warn"}"></span>
-            <span>Google Drive Date-Wise Folder Upload</span>
+            <span>📂 Google Drive Date-Wise Folder Upload</span>
           </div>
           <div class="stack-item-desc">
             ${driveOk ? "Configured and active. Daily .docx reports upload automatically into YYYY-MM-DD folders." : "Awaiting Gmail OAuth connection."}
@@ -1555,6 +1717,7 @@ function initEvents() {
   el("logs-refresh-btn")?.addEventListener("click", () => refreshAllData());
 }
 
+initDynamicEmailBackground();
 initEvents();
 refreshAllData();
 setInterval(refreshAllData, 5000);
