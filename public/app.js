@@ -1467,8 +1467,59 @@ function renderSettingsView() {
    Master Render & Polling
    ========================================================================== */
 
+function applyAccentTheme() {
+  const messages = getPeriodFilteredMessages();
+  const root = document.documentElement;
+  if (!messages || messages.length === 0) {
+    root.style.setProperty("--accent-theme", "var(--forest-500)");
+    return;
+  }
+
+  const hasCritical = messages.some((m) => m.importance === "Critical");
+  if (hasCritical) {
+    root.style.setProperty("--accent-theme", "var(--critical-text)");
+    return;
+  }
+
+  const hasHigh = messages.some((m) => m.importance === "High");
+  if (hasHigh) {
+    root.style.setProperty("--accent-theme", "var(--high-text)");
+    return;
+  }
+
+  const counts = {};
+  for (const m of messages) {
+    const cat = m.category || "Other";
+    counts[cat] = (counts[cat] || 0) + 1;
+  }
+
+  let dominant = "Other";
+  let maxCount = 0;
+  for (const [cat, count] of Object.entries(counts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      dominant = cat;
+    }
+  }
+
+  const categoryColorMap = {
+    Security: "var(--critical-text)",
+    Finance: "var(--high-text)",
+    Meetings: "var(--forest-600)",
+    Work: "var(--forest-500)",
+    Personal: "var(--medium-text)",
+    Travel: "var(--forest-700)",
+    Notifications: "var(--low-text)",
+    Newsletters: "var(--low-text)",
+    Other: "var(--forest-500)",
+  };
+
+  root.style.setProperty("--accent-theme", categoryColorMap[dominant] || "var(--forest-500)");
+}
+
 function renderActiveView() {
   renderShellStatus();
+  applyAccentTheme();
   switch (state.activeView) {
     case "overview":
       renderOverviewView();
@@ -1546,12 +1597,16 @@ function initEvents() {
     });
   });
 
-  el("sidebar-collapse")?.addEventListener("click", () => {
-    el("app-layout")?.classList.toggle("sidebar-collapsed");
+  el("sidebar-collapse")?.addEventListener("click", (e) => {
+    const layout = el("app-layout");
+    const isCollapsed = layout?.classList.toggle("sidebar-collapsed");
+    e.currentTarget.setAttribute("aria-expanded", String(!isCollapsed));
   });
 
-  el("mobile-menu-btn")?.addEventListener("click", () => {
-    el("sidebar")?.classList.toggle("mobile-open");
+  el("mobile-menu-btn")?.addEventListener("click", (e) => {
+    const sidebar = el("sidebar");
+    const isOpen = sidebar?.classList.toggle("mobile-open");
+    e.currentTarget.setAttribute("aria-expanded", String(Boolean(isOpen)));
   });
 
   el("global-search")?.addEventListener("input", (e) => {

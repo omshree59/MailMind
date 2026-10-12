@@ -26,7 +26,7 @@
             <span class="brand-tag">Local Gemma Workspace</span>
           </div>
         </div>
-        <button id="sidebar-collapse" class="icon-btn" type="button" title="Toggle sidebar" aria-label="Toggle sidebar">
+        <button id="sidebar-collapse" class="icon-btn" type="button" title="Toggle sidebar" aria-label="Toggle sidebar" aria-expanded="true">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2"></rect>
             <path d="M9 3v18"></path>
@@ -36,7 +36,7 @@
 
       <nav class="sidebar-nav" role="navigation">
         <div class="nav-group-label">Workspace</div>
-        <button class="nav-item active" data-view="overview" type="button" title="Overview">
+        <button class="nav-item active" data-view="overview" type="button" title="Overview" aria-current="page">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
           <span class="nav-label">Overview</span>
         </button>
@@ -103,7 +103,7 @@
       <!-- Top Bar -->
       <header class="topbar">
         <div class="topbar-left">
-          <button id="mobile-menu-btn" class="icon-btn mobile-only" type="button" aria-label="Open menu">
+          <button id="mobile-menu-btn" class="icon-btn mobile-only" type="button" aria-label="Open menu" aria-expanded="false">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div>
@@ -171,8 +171,8 @@
                 <span class="metric-label">Primary Emails Processed</span>
                 <span class="badge badge-neutral" id="ov-period-tag">All Periods</span>
               </div>
-              <div class="metric-value" id="ov-total-emails">0</div>
-              <div class="metric-foot" id="ov-ai-breakdown">Promotions &amp; updates excluded</div>
+              <div class="metric-value title-lg" id="ov-total-emails">0</div>
+              <div class="metric-foot meta-text" id="ov-ai-breakdown">Promotions &amp; updates excluded</div>
             </article>
 
             <article class="metric-card">
@@ -180,8 +180,8 @@
                 <span class="metric-label">Requires Attention</span>
                 <span class="badge badge-high">Critical &amp; High</span>
               </div>
-              <div class="metric-value" id="ov-high-priority">0</div>
-              <div class="metric-foot" id="ov-reply-count">0 awaiting reply</div>
+              <div class="metric-value title-lg" id="ov-high-priority">0</div>
+              <div class="metric-foot meta-text" id="ov-reply-count">0 awaiting reply</div>
             </article>
 
             <article class="metric-card">
@@ -189,8 +189,8 @@
                 <span class="metric-label">Pending Actions &amp; Deadlines</span>
                 <span class="badge badge-forest">Extracted</span>
               </div>
-              <div class="metric-value" id="ov-actions-count">0</div>
-              <div class="metric-foot" id="ov-deadlines-count">0 explicit deadlines verified</div>
+              <div class="metric-value title-lg" id="ov-actions-count">0</div>
+              <div class="metric-foot meta-text" id="ov-deadlines-count">0 explicit deadlines verified</div>
             </article>
 
             <article class="metric-card">
@@ -199,7 +199,7 @@
                 <span class="badge" id="ov-schedule-badge">Checking</span>
               </div>
               <div class="metric-value metric-value-sm" id="ov-next-run">—</div>
-              <div class="metric-foot" id="ov-last-sync">Last sync: none yet</div>
+              <div class="metric-foot meta-text" id="ov-last-sync">Last sync: none yet</div>
             </article>
           </div>
 
@@ -209,8 +209,8 @@
               <section class="panel">
                 <div class="panel-header">
                   <div>
-                    <h2 class="panel-title">Important Emails Requiring Attention</h2>
-                    <p class="panel-subtitle">Critical and High-importance messages from your Primary Inbox, or messages needing a reply.</p>
+                    <h2 class="panel-title heading-md">Important Emails Requiring Attention</h2>
+                    <p class="panel-subtitle meta-text">Critical and High-importance messages from your Primary Inbox, or messages needing a reply.</p>
                   </div>
                   <button class="btn btn-ghost btn-sm" data-goto="inbox" type="button">View all emails →</button>
                 </div>
@@ -221,8 +221,8 @@
               <section class="panel">
                 <div class="panel-header">
                   <div>
-                    <h2 class="panel-title">Latest Generated Reports</h2>
-                    <p class="panel-subtitle">Formatted Word (`.docx`) reports saved locally and uploaded to date-wise Google Drive folders.</p>
+                    <h2 class="panel-title heading-md">Latest Generated Reports</h2>
+                    <p class="panel-subtitle meta-text">Formatted Word (`.docx`) reports saved locally and uploaded to date-wise Google Drive folders.</p>
                   </div>
                   <div class="panel-actions">
                     <button id="ov-run-test" class="btn btn-secondary btn-sm" type="button">Test (3 Emails)</button>
@@ -238,8 +238,8 @@
               <section class="panel">
                 <div class="panel-header">
                   <div>
-                    <h2 class="panel-title">Detected Action Items</h2>
-                    <p class="panel-subtitle">Tasks and verbatim deadlines extracted by Gemma.</p>
+                    <h2 class="panel-title heading-md">Detected Action Items</h2>
+                    <p class="panel-subtitle meta-text">Tasks and verbatim deadlines extracted by Gemma.</p>
                   </div>
                   <button class="btn btn-ghost btn-sm" data-goto="actions" type="button">All tasks →</button>
                 </div>
@@ -250,8 +250,8 @@
               <section class="panel">
                 <div class="panel-header">
                   <div>
-                    <h2 class="panel-title">Recent Activity Timeline</h2>
-                    <p class="panel-subtitle">Live operational events from the backend engine.</p>
+                    <h2 class="panel-title heading-md">Recent Activity Timeline</h2>
+                    <p class="panel-subtitle meta-text">Live operational events from the backend engine.</p>
                   </div>
                   <button class="btn btn-ghost btn-sm" data-goto="logs" type="button">Full logs →</button>
                 </div>
@@ -341,8 +341,8 @@
         <section id="view-categories" class="view-section">
           <div class="section-intro">
             <div>
-              <h2 class="section-heading">Domain Lenses &amp; Mail Categories</h2>
-              <p class="section-desc">Genuine counts derived from your synchronized Primary Inbox emails. Click any card to inspect the matching messages.</p>
+              <h2 class="section-heading heading-md">Domain Lenses &amp; Mail Categories</h2>
+              <p class="section-desc meta-text">Genuine counts derived from your synchronized Primary Inbox emails. Click any card to inspect the matching messages.</p>
             </div>
           </div>
 
@@ -355,8 +355,8 @@
           <section class="panel" id="category-preview-panel">
             <div class="panel-header">
               <div>
-                <h2 class="panel-title" id="category-preview-title">Category Emails</h2>
-                <p class="panel-subtitle" id="category-preview-subtitle">Select a category card above to filter emails.</p>
+                <h2 class="panel-title heading-md" id="category-preview-title">Category Emails</h2>
+                <p class="panel-subtitle meta-text" id="category-preview-subtitle">Select a category card above to filter emails.</p>
               </div>
               <button id="category-open-inbox" class="btn btn-secondary btn-sm" type="button">Open in Inbox Intelligence →</button>
             </div>
@@ -386,8 +386,8 @@
           <section class="panel">
             <div class="panel-header">
               <div>
-                <h2 class="panel-title">Extracted Tasks &amp; Explicit Deadlines</h2>
-                <p class="panel-subtitle">Derived from analyzed Primary Inbox emails. MailMind operates in read-only mode (`gmail.readonly`); open the source email in Gmail to reply or act.</p>
+                <h2 class="panel-title heading-md">Extracted Tasks &amp; Explicit Deadlines</h2>
+                <p class="panel-subtitle meta-text">Derived from analyzed Primary Inbox emails. MailMind operates in read-only mode (`gmail.readonly`); open the source email in Gmail to reply or act.</p>
               </div>
             </div>
             <div id="actions-table-wrap" class="table-container"></div>
@@ -400,8 +400,8 @@
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <h2 class="panel-title">Generate or Backfill Report</h2>
-                  <p class="panel-subtitle">Run yesterday's default report, test with 3 primary emails, or generate a report for a specific date window (up to 31 days).</p>
+                  <h2 class="panel-title heading-md">Generate or Backfill Report</h2>
+                  <p class="panel-subtitle meta-text">Run yesterday's default report, test with 3 primary emails, or generate a report for a specific date window (up to 31 days).</p>
                 </div>
               </div>
               <form id="reports-range-form" class="inline-form">
@@ -423,11 +423,11 @@
           <section class="panel">
             <div class="panel-header">
               <div>
-                <h2 class="panel-title">Historical Word Reports &amp; Google Drive Archives</h2>
-                <p class="panel-subtitle">Every completed report is saved locally as `MailMind_Report_YYYY-MM-DD.docx` and uploaded into a date-wise folder (`YYYY-MM-DD`) in Google Drive.</p>
+                <h2 class="panel-title heading-md">Historical Word Reports &amp; Google Drive Archives</h2>
+                <p class="panel-subtitle meta-text">Every completed report is saved locally as `MailMind_Report_YYYY-MM-DD.docx` and uploaded into a date-wise folder (`YYYY-MM-DD`) in Google Drive.</p>
               </div>
               <div class="panel-actions">
-                <input id="reports-search" class="input-sm" type="search" placeholder="Filter by date (YYYY-MM-DD) or status…">
+                <input id="reports-search" class="input-sm" type="search" placeholder="Filter by date (YYYY-MM-DD) or status…" aria-label="Filter reports by date or status">
               </div>
             </div>
             <div class="table-container">
@@ -459,7 +459,7 @@
                 <span class="badge" id="auto-state-badge">Checking</span>
               </div>
               <div class="metric-value metric-value-sm" id="auto-schedule-time">07:00 Asia/Kolkata</div>
-              <div class="metric-foot" id="auto-catchup-label">Wake recovery active</div>
+              <div class="metric-foot meta-text" id="auto-catchup-label">Wake recovery active</div>
             </article>
 
             <article class="metric-card">
@@ -468,7 +468,7 @@
                 <span class="badge badge-neutral">node-cron</span>
               </div>
               <div class="metric-value metric-value-sm" id="auto-next-run">—</div>
-              <div class="metric-foot" id="auto-last-run">Last completed: none yet</div>
+              <div class="metric-foot meta-text" id="auto-last-run">Last completed: none yet</div>
             </article>
 
             <article class="metric-card">
@@ -477,7 +477,7 @@
                 <span class="badge badge-forest" id="auto-ready-badge">Ready</span>
               </div>
               <div class="metric-value metric-value-sm" id="auto-ready-summary">All 3 services online</div>
-              <div class="metric-foot">Gmail · Local Gemma · Google Drive</div>
+              <div class="metric-foot meta-text">Gmail · Local Gemma · Google Drive</div>
             </article>
           </div>
 
@@ -485,8 +485,8 @@
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <h2 class="panel-title">Daily Schedule Configuration</h2>
-                  <p class="panel-subtitle">Configure when MailMind AI synchronizes your Primary Inbox and uploads the daily `.docx` report to Google Drive.</p>
+                  <h2 class="panel-title heading-md">Daily Schedule Configuration</h2>
+                  <p class="panel-subtitle meta-text">Configure when MailMind AI synchronizes your Primary Inbox and uploads the daily `.docx` report to Google Drive.</p>
                 </div>
               </div>
               <form id="automation-form" class="stacked-form">
@@ -534,16 +534,16 @@
               <section class="panel">
                 <div class="panel-header">
                   <div>
-                    <h2 class="panel-title">Integration Readiness</h2>
-                    <p class="panel-subtitle">Live pre-flight checks before scheduled execution.</p>
+                    <h2 class="panel-title heading-md">Integration Readiness</h2>
+                    <p class="panel-subtitle meta-text">Live pre-flight checks before scheduled execution.</p>
                   </div>
                 </div>
                 <div id="auto-readiness-list" class="stack-list"></div>
               </section>
 
               <section class="panel callout-panel">
-                <h3 class="panel-title">Local Operation Notice</h3>
-                <p class="panel-subtitle">MailMind AI runs 100% locally on your machine using Ollama and SQLite (`node:sqlite`). Keep the local backend process (`npm run dev`) running so `node-cron` and the 15-minute wake-recovery check can execute scheduled jobs.</p>
+                <h3 class="panel-title heading-md">Local Operation Notice</h3>
+                <p class="panel-subtitle meta-text">MailMind AI runs 100% locally on your machine using Ollama and SQLite (`node:sqlite`). Keep the local backend process (`npm run dev`) running so `node-cron` and the 15-minute wake-recovery check can execute scheduled jobs.</p>
               </section>
             </div>
           </div>
@@ -596,8 +596,8 @@
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <h2 class="panel-title">1. Google Account Connection</h2>
-                  <p class="panel-subtitle">Read-only Gmail (`gmail.readonly`) and Google Drive report upload authorization.</p>
+                  <h2 class="panel-title heading-md">1. Google Account Connection</h2>
+                  <p class="panel-subtitle meta-text">Read-only Gmail (`gmail.readonly`) and Google Drive report upload authorization.</p>
                 </div>
                 <span class="badge" id="settings-google-badge">Checking</span>
               </div>
@@ -610,8 +610,8 @@
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <h2 class="panel-title">2. Local AI Model Status (Ollama)</h2>
-                  <p class="panel-subtitle">All categorization and summarization runs locally via Gemma—no cloud AI APIs are ever called.</p>
+                  <h2 class="panel-title heading-md">2. Local AI Model Status (Ollama)</h2>
+                  <p class="panel-subtitle meta-text">All categorization and summarization runs locally via Gemma—no cloud AI APIs are ever called.</p>
                 </div>
                 <span class="badge" id="settings-ollama-badge">Checking</span>
               </div>
@@ -621,8 +621,8 @@
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <h2 class="panel-title">3. Report &amp; Inbox Preferences</h2>
-                  <p class="panel-subtitle">Configured rules governing inbox filtering, deadline verification, and `.docx` formatting.</p>
+                  <h2 class="panel-title heading-md">3. Report &amp; Inbox Preferences</h2>
+                  <p class="panel-subtitle meta-text">Configured rules governing inbox filtering, deadline verification, and `.docx` formatting.</p>
                 </div>
                 <span class="badge badge-forest">Enforced</span>
               </div>
@@ -638,8 +638,8 @@
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <h2 class="panel-title">4. Storage &amp; Google Drive Destination</h2>
-                  <p class="panel-subtitle">Local SQLite persistence and date-wise Google Drive folder organization.</p>
+                  <h2 class="panel-title heading-md">4. Storage &amp; Google Drive Destination</h2>
+                  <p class="panel-subtitle meta-text">Local SQLite persistence and date-wise Google Drive folder organization.</p>
                 </div>
                 <span class="badge badge-forest" id="settings-drive-badge">Configured</span>
               </div>

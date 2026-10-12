@@ -61,6 +61,9 @@
   --font-weight-bold: 700;
   --font-weight-semibold: 600;
   --font-weight-regular: 400;
+
+  /* Accent theme (dynamic) */
+  --accent-theme: var(--forest-500);
 }
 
 /* Utility classes */

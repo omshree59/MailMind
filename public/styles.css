@@ -339,9 +339,10 @@ body {
   min-width: 0;
   position: relative;
   overflow-x: hidden;
-  background: radial-gradient(circle at 15% 15%, #e8f5ef 0%, transparent 45%),
-    radial-gradient(circle at 85% 25%, #eef5fb 0%, transparent 45%),
-    radial-gradient(circle at 50% 85%, #f6f3eb 0%, transparent 55%),
+  background:
+    radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--accent-theme) 11%, transparent) 0%, transparent 48%),
+    radial-gradient(circle at 86% 22%, #eef5fb 0%, transparent 46%),
+    radial-gradient(circle at 50% 88%, #f6f3eb 0%, transparent 55%),
     var(--bg-canvas);
 }
 
@@ -376,7 +377,7 @@ body {
   color: rgba(22, 56, 46, 0.58);
   font-weight: 500;
   backdrop-filter: blur(3px);
-  animation: floatMail PillDrift linear infinite;
+  animation: floatEmojiDrift ease-in-out infinite alternate;
   white-space: nowrap;
 }
 
@@ -425,8 +426,8 @@ body {
 .page-title {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: 1.6rem;
-  font-weight: 600;
+  font-size: var(--font-size-title-lg);
+  font-weight: var(--font-weight-bold);
   letter-spacing: -0.02em;
   line-height: 1.15;
   color: var(--ink-primary);
@@ -604,6 +605,7 @@ body {
   background: var(--bg-surface);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--accent-theme);
   border-radius: var(--radius-md);
   padding: 16px 18px;
   box-shadow: var(--shadow-xs);
@@ -629,8 +631,8 @@ body {
 
 .metric-value {
   font-family: var(--font-serif);
-  font-size: 1.95rem;
-  font-weight: 600;
+  font-size: var(--font-size-title-lg);
+  font-weight: var(--font-weight-bold);
   color: var(--ink-primary);
   line-height: 1.1;
 }
@@ -643,7 +645,7 @@ body {
 }
 
 .metric-foot {
-  font-size: 0.79rem;
+  font-size: var(--font-size-meta);
   color: var(--ink-muted);
 }
 
@@ -689,16 +691,11 @@ body {
 
 .panel-title {
   margin: 0;
-  font-family: var(--font-serif);
-  font-size: 1.18rem;
-  font-weight: 600;
   color: var(--ink-primary);
 }
 
 .panel-subtitle {
   margin: 3px 0 0;
-  font-size: 0.82rem;
-  color: var(--ink-secondary);
 }
 
 .panel-actions {
@@ -1103,14 +1100,10 @@ body {
    ========================================================================== */
 .section-heading {
   margin: 0;
-  font-family: var(--font-serif);
-  font-size: 1.35rem;
 }
 
 .section-desc {
   margin: 4px 0 0;
-  font-size: 0.86rem;
-  color: var(--ink-secondary);
 }
 
 .sub-heading {
@@ -1418,6 +1411,21 @@ select:focus {
   background: #ffffff;
 }
 
+/* Keyboard Focus Indicators */
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.nav-item:focus-visible,
+.category-card:focus-visible,
+.human-link-chip:focus-visible,
+.stack-item:focus-visible,
+.compact-item:focus-visible,
+.email-row:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--forest-600);
+  outline-offset: 2px;
+}
+
 /* Badges */
 .badge {
   display: inline-flex;
@@ -1496,6 +1504,22 @@ select:focus {
 
 .mobile-only {
   display: none;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .floating-mail-item,
+  .floating-mail-emoji {
+    animation: none !important;
+  }
 }
 
 /* Responsive Breakpoints */
