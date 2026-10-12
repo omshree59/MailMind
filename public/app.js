@@ -35,14 +35,17 @@ const VIEW_METADATA = {
   },
 };
 
+const msgTextBlob = (msg) =>
+  `${msg.subject || ""} ${msg.from || ""} ${msg.summary || ""} ${(msg.keyInformation || []).join(" ")} ${(msg.actionItems || []).join(" ")}`;
+
 const FOCUS_DOMAINS = [
   {
     id: "college",
     name: "College & Education",
     description: "Courses, university notices, faculty correspondence, and campus announcements.",
     match: (msg) =>
-      /\b(college|university|campus|professor|faculty|lecture|semester|syllabus|course|academic|student|dean|department|vit|iit|nit|edu)\b/i.test(
-        `${msg.subject} ${msg.sender} ${msg.snippet} ${msg.analysis?.summary || ""}`,
+      /\b(college|university|campus|professor|faculty|lecture|semester|syllabus|course|academic|student|dean|department|vit|iit|nit|edu|school|class)\b/i.test(
+        msgTextBlob(msg),
       ),
   },
   {
@@ -50,8 +53,8 @@ const FOCUS_DOMAINS = [
     name: "Assignments & Exams",
     description: "Deadlines, quizzes, lab submissions, project evaluations, and exam schedules.",
     match: (msg) =>
-      /\b(assignment|exam|quiz|midterm|final|submission|grade|homework|lab|test|project|assessment|deadline)\b/i.test(
-        `${msg.subject} ${msg.sender} ${msg.snippet} ${msg.analysis?.summary || ""}`,
+      /\b(assignment|exam|quiz|midterm|final|submission|grade|homework|lab|test|project|assessment|deadline|hackathon)\b/i.test(
+        msgTextBlob(msg),
       ),
   },
   {
@@ -59,18 +62,18 @@ const FOCUS_DOMAINS = [
     name: "Jobs & Internships",
     description: "Recruiting, interview invites, internship offers, applications, and career updates.",
     match: (msg) =>
-      /\b(job|internship|interview|recruiter|hiring|application|offer|resume|career|candidate|onboarding|stipend|role|position)\b/i.test(
-        `${msg.subject} ${msg.sender} ${msg.snippet} ${msg.analysis?.summary || ""}`,
-      ) || msg.analysis?.category === "Work",
+      /\b(job|internship|interview|recruiter|hiring|application|offer|resume|career|candidate|onboarding|stipend|role|position|linkedin)\b/i.test(
+        msgTextBlob(msg),
+      ) || msg.category === "Work",
   },
   {
     id: "finance",
     name: "Finance & Bills",
     description: "Invoices, payment confirmations, bank alerts, tax statements, and subscriptions.",
     match: (msg) =>
-      msg.analysis?.category === "Finance" ||
-      /\b(invoice|payment|bill|receipt|bank|transaction|statement|tax|refund|salary|upi|credit|debit)\b/i.test(
-        `${msg.subject} ${msg.sender} ${msg.snippet}`,
+      msg.category === "Finance" ||
+      /\b(invoice|payment|bill|receipt|bank|transaction|statement|tax|refund|salary|upi|credit|debit|billing)\b/i.test(
+        msgTextBlob(msg),
       ),
   },
   {
@@ -78,9 +81,9 @@ const FOCUS_DOMAINS = [
     name: "Purchases & Orders",
     description: "Order confirmations, shipping updates, deliveries, and travel bookings.",
     match: (msg) =>
-      msg.analysis?.category === "Travel" ||
+      msg.category === "Travel" ||
       /\b(order|shipment|delivery|dispatched|tracking|amazon|flipkart|flight|hotel|booking|ticket|parcel)\b/i.test(
-        `${msg.subject} ${msg.sender} ${msg.snippet}`,
+        msgTextBlob(msg),
       ),
   },
   {
@@ -88,9 +91,9 @@ const FOCUS_DOMAINS = [
     name: "Security & Access",
     description: "Security alerts, verification codes, OAuth grants, and sign-in notifications.",
     match: (msg) =>
-      msg.analysis?.category === "Security" ||
-      /\b(security|password|verification|otp|login|sign-in|2fa|authentication|access|alert)\b/i.test(
-        `${msg.subject} ${msg.sender} ${msg.snippet}`,
+      msg.category === "Security" ||
+      /\b(security|password|verification|otp|login|sign-in|2fa|authentication|access|alert|google|github)\b/i.test(
+        msgTextBlob(msg),
       ),
   },
   {
@@ -98,20 +101,16 @@ const FOCUS_DOMAINS = [
     name: "Personal & Meetings",
     description: "Direct personal correspondence, calendar invitations, and 1-on-1 scheduling.",
     match: (msg) =>
-      msg.analysis?.category === "Personal" ||
-      msg.analysis?.category === "Meetings" ||
-      /\b(meeting|calendar|invite|zoom|google meet|catch up|dinner|lunch|family)\b/i.test(
-        `${msg.subject} ${msg.sender} ${msg.snippet}`,
-      ),
+      msg.category === "Personal" ||
+      msg.category === "Meetings" ||
+      /\b(meeting|calendar|invite|zoom|google meet|catch up|dinner|lunch|family)\b/i.test(msgTextBlob(msg)),
   },
   {
     id: "other",
     name: "General & Notifications",
-    description: "System updates, general correspondence, and uncategorized primary messages.",
+    description: "System updates, general correspondence, and notifications in Primary Inbox.",
     match: (msg) =>
-      msg.analysis?.category === "Notifications" ||
-      msg.analysis?.category === "Newsletters" ||
-      msg.analysis?.category === "Other",
+      msg.category === "Notifications" || msg.category === "Newsletters" || msg.category === "Other",
   },
 ];
 
@@ -151,7 +150,7 @@ const state = {
     selectedGmailId: null,
   },
   categories: {
-    selectedType: "domain", // "domain" | "core"
+    selectedType: "domain",
     selectedId: "college",
   },
   actionsFilter: "all",
@@ -287,9 +286,7 @@ function switchView(viewName) {
   el("page-title").textContent = meta.title;
   el("page-subtitle").textContent = meta.subtitle;
 
-  // Close mobile sidebar if open
   el("sidebar")?.classList.remove("mobile-open");
-
   renderActiveView();
 }
 
@@ -308,9 +305,8 @@ function getPeriodFilteredMessages() {
 function getAllExtractedTasks(messages) {
   const items = [];
   for (const msg of messages) {
-    const analysis = msg.analysis || {};
-    const actions = Array.isArray(analysis.actionItems) ? analysis.actionItems : [];
-    const deadlines = Array.isArray(analysis.deadlines) ? analysis.deadlines : [];
+    const actions = Array.isArray(msg.actionItems) ? msg.actionItems : [];
+    const deadlines = Array.isArray(msg.deadlines) ? msg.deadlines : [];
 
     if (actions.length > 0) {
       actions.forEach((taskText, idx) => {
@@ -319,12 +315,12 @@ function getAllExtractedTasks(messages) {
           task: taskText,
           deadline: deadlines[idx] || deadlines[0] || null,
           allDeadlines: deadlines,
-          importance: analysis.importance || "Low",
-          category: analysis.category || "Other",
-          replyNeeded: Boolean(analysis.replyNeeded),
+          importance: msg.importance || "Low",
+          category: msg.category || "Other",
+          replyNeeded: Boolean(msg.replyNeeded),
           gmailId: msg.gmailId,
           subject: msg.subject,
-          sender: msg.sender,
+          sender: msg.from,
           receivedAt: msg.receivedAt,
           gmailLink: msg.gmailLink,
         });
@@ -333,31 +329,31 @@ function getAllExtractedTasks(messages) {
       deadlines.forEach((dlText, idx) => {
         items.push({
           id: `${msg.gmailId}-dl-${idx}`,
-          task: `Observed deadline in "${msg.subject}"`,
+          task: `Explicit deadline in "${msg.subject}"`,
           deadline: dlText,
           allDeadlines: deadlines,
-          importance: analysis.importance || "Low",
-          category: analysis.category || "Other",
-          replyNeeded: Boolean(analysis.replyNeeded),
+          importance: msg.importance || "Low",
+          category: msg.category || "Other",
+          replyNeeded: Boolean(msg.replyNeeded),
           gmailId: msg.gmailId,
           subject: msg.subject,
-          sender: msg.sender,
+          sender: msg.from,
           receivedAt: msg.receivedAt,
           gmailLink: msg.gmailLink,
         });
       });
-    } else if (analysis.replyNeeded) {
+    } else if (msg.replyNeeded) {
       items.push({
         id: `${msg.gmailId}-reply`,
         task: `Reply requested: ${msg.subject}`,
         deadline: null,
         allDeadlines: [],
-        importance: analysis.importance || "Low",
-        category: analysis.category || "Other",
+        importance: msg.importance || "Low",
+        category: msg.category || "Other",
         replyNeeded: true,
         gmailId: msg.gmailId,
         subject: msg.subject,
-        sender: msg.sender,
+        sender: msg.from,
         receivedAt: msg.receivedAt,
         gmailLink: msg.gmailLink,
       });
@@ -384,7 +380,8 @@ function updatePeriodSelector() {
   );
 
   const currentVal = state.selectedPeriod;
-  select.innerHTML = `<option value="">All synchronized periods (${state.messages.length} emails)</option>` +
+  select.innerHTML =
+    `<option value="">All synchronized periods (${state.messages.length} emails)</option>` +
     uniquePeriods
       .map((p) => {
         const count = state.messages.filter((m) => m.periodLabel === p).length;
@@ -397,42 +394,36 @@ function renderShellStatus() {
   const status = state.status;
   if (!status) return;
 
-  const googleOk = Boolean(status.google?.connected);
-  const ollamaOk = Boolean(status.ollama?.reachable && status.ollama?.configuredModelInstalled);
-  const driveOk = Boolean(status.google?.connected && status.driveConfigured);
+  const googleOk = status.google?.state === "connected";
+  const ollamaOk = Boolean(status.ollama?.ok && status.ollama?.installed);
+  const driveOk = Boolean(googleOk && status.driveConfigured);
+  const cfg = status.config || {};
 
-  // Sidebar status dots
   const setDot = (dotId, stateId, stateType, label) => {
     const dot = el(dotId);
     const st = el(stateId);
-    if (dot) {
-      dot.className = `status-dot ${stateType}`;
-    }
-    if (st) {
-      st.textContent = label;
-    }
+    if (dot) dot.className = `status-dot ${stateType}`;
+    if (st) st.textContent = label;
   };
 
   setDot("dot-gmail", "state-gmail", googleOk ? "ok" : "err", googleOk ? "Connected" : "Action Needed");
   setDot(
     "dot-ollama",
     "state-ollama",
-    ollamaOk ? "ok" : status.ollama?.reachable ? "warn" : "err",
-    ollamaOk ? status.config?.ollamaModel || "Ready" : status.ollama?.reachable ? "Model Missing" : "Offline",
+    ollamaOk ? "ok" : status.ollama?.ok ? "warn" : "err",
+    ollamaOk ? cfg.OLLAMA_MODEL || "gemma3:4b" : status.ollama?.ok ? "Model Missing" : "Offline",
   );
   setDot("dot-drive", "state-drive", driveOk ? "ok" : "warn", driveOk ? "Date Folders" : "Standby");
 
-  // Topbar account chip
   const chipDot = el("chip-dot");
   const chipLabel = el("chip-label");
   if (chipDot && chipLabel) {
     chipDot.className = `status-dot ${googleOk ? "ok" : "err"}`;
     chipLabel.textContent = googleOk
-      ? status.google.emailAddress || "Gmail Connected"
+      ? status.google.email || "Gmail Connected"
       : "Gmail Not Connected";
   }
 
-  // Sidebar navigation counts
   const periodMessages = getPeriodFilteredMessages();
   const tasks = getAllExtractedTasks(periodMessages);
   const completedReports = (status.runs || []).filter((r) => r.status === "completed").length;
@@ -447,12 +438,12 @@ function renderShellStatus() {
     connectBanner.classList.toggle("hidden", googleOk);
   }
 
-  // Active Running Job banner
+  // Running job banner
   const runningBanner = el("running-banner");
   if (runningBanner) {
-    if (status.running) {
+    if (status.busy) {
       runningBanner.classList.remove("hidden");
-      const activeRun = (status.runs || []).find((r) => r.status === "running");
+      const activeRun = status.currentRun || (status.runs || []).find((r) => r.status === "running");
       el("running-title").textContent = activeRun
         ? `Processing report for ${activeRun.periodLabel}…`
         : "Report pipeline is currently executing…";
@@ -465,17 +456,18 @@ function renderShellStatus() {
   // Missed scheduled run banner
   const missedBanner = el("missed-banner");
   if (missedBanner) {
-    if (status.missedPeriodLabel && !status.running) {
+    const missedLabel = status.missed?.periodLabel;
+    if (missedLabel && !status.busy) {
       missedBanner.classList.remove("hidden");
       missedBanner.innerHTML = `
         <div class="alert-body">
-          <strong>Missed Scheduled Report Detected (${escapeHtml(status.missedPeriodLabel)})</strong>
-          <span>Your computer was asleep or offline during the scheduled window for ${escapeHtml(status.missedPeriodLabel)}.</span>
+          <strong>Missed Scheduled Report Detected (${escapeHtml(missedLabel)})</strong>
+          <span>Your computer was asleep or offline during the scheduled window for ${escapeHtml(missedLabel)}.</span>
         </div>
-        <button class="btn btn-primary btn-sm" id="run-missed-btn" type="button">Run ${escapeHtml(status.missedPeriodLabel)} Now</button>
+        <button class="btn btn-primary btn-sm" id="run-missed-btn" type="button">Run ${escapeHtml(missedLabel)} Now</button>
       `;
       el("run-missed-btn")?.addEventListener("click", () =>
-        triggerRun({ date: status.missedPeriodLabel, trigger: "catchup" }),
+        triggerRun({ mode: "now", from: missedLabel, to: missedLabel }),
       );
     } else {
       missedBanner.classList.add("hidden");
@@ -483,10 +475,9 @@ function renderShellStatus() {
     }
   }
 
-  // Top Run Now button state
   const topRunBtn = el("top-run-now");
   if (topRunBtn) {
-    topRunBtn.disabled = Boolean(status.running);
+    topRunBtn.disabled = Boolean(status.busy);
   }
 }
 
@@ -501,8 +492,7 @@ function renderOverviewView() {
   const messages = getPeriodFilteredMessages();
   const runs = status.runs || [];
 
-  // Metric 1: Total Emails Processed
-  const aiCount = messages.filter((m) => m.analysis?.aiSummaryAvailable).length;
+  const aiCount = messages.filter((m) => m.aiSummaryAvailable).length;
   const fallbackCount = messages.length - aiCount;
   el("ov-period-tag").textContent = state.selectedPeriod || "All Periods";
   el("ov-total-emails").textContent = String(messages.length);
@@ -511,49 +501,46 @@ function renderOverviewView() {
       ? `${aiCount} Gemma AI · ${fallbackCount} rule-based · Primary Inbox only`
       : "Primary Inbox only (Promotions & Updates excluded)";
 
-  // Metric 2: High Priority & Critical
   const highPriorityMsgs = messages.filter(
-    (m) => m.analysis?.importance === "Critical" || m.analysis?.importance === "High",
+    (m) => m.importance === "Critical" || m.importance === "High",
   );
-  const replyMsgs = messages.filter((m) => m.analysis?.replyNeeded);
+  const replyMsgs = messages.filter((m) => m.replyNeeded);
   el("ov-high-priority").textContent = String(highPriorityMsgs.length);
   el("ov-reply-count").textContent = `${replyMsgs.length} awaiting reply`;
 
-  // Metric 3: Pending Actions & Deadlines
   const totalActions = messages.reduce(
-    (acc, m) => acc + (Array.isArray(m.analysis?.actionItems) ? m.analysis.actionItems.length : 0),
+    (acc, m) => acc + (Array.isArray(m.actionItems) ? m.actionItems.length : 0),
     0,
   );
   const totalDeadlines = messages.reduce(
-    (acc, m) => acc + (Array.isArray(m.analysis?.deadlines) ? m.analysis.deadlines.length : 0),
+    (acc, m) => acc + (Array.isArray(m.deadlines) ? m.deadlines.length : 0),
     0,
   );
   el("ov-actions-count").textContent = String(totalActions);
   el("ov-deadlines-count").textContent = `${totalDeadlines} explicit deadline${totalDeadlines === 1 ? "" : "s"} verified`;
 
-  // Metric 4: Schedule & Last Sync
-  const schedEnabled = Boolean(status.config?.scheduleEnabled);
+  const schedEnabled = Boolean(status.scheduleEnabled);
   const schedBadge = el("ov-schedule-badge");
   if (schedBadge) {
     schedBadge.className = `badge ${schedEnabled ? "badge-forest" : "badge-neutral"}`;
     schedBadge.textContent = schedEnabled ? "Automated Daily" : "Paused";
   }
-  el("ov-next-run").textContent = status.nextScheduledRun
-    ? formatShortTime(status.nextScheduledRun)
+  el("ov-next-run").textContent = status.nextRunAt
+    ? formatShortTime(status.nextRunAt)
     : "Schedule disabled";
-  el("ov-last-sync").textContent = status.lastSuccessfulRun
-    ? `Last sync: ${ status.lastSuccessfulRun.periodLabel } (${formatShortTime(status.lastSuccessfulRun.completedAt)})`
+  el("ov-last-sync").textContent = status.lastSuccess
+    ? `Last sync: ${status.lastSuccess.periodLabel} (${formatShortTime(status.lastSuccess.finishedAt)})`
     : "Last sync: no completed run yet";
 
-  // Priority Emails Requiring Attention List
+  // Priority Emails Requiring Attention
   const priorityContainer = el("ov-priority-list");
   const attentionEmails = messages
     .filter(
       (m) =>
-        m.analysis?.importance === "Critical" ||
-        m.analysis?.importance === "High" ||
-        m.analysis?.replyNeeded ||
-        (m.analysis?.deadlines && m.analysis.deadlines.length > 0),
+        m.importance === "Critical" ||
+        m.importance === "High" ||
+        m.replyNeeded ||
+        (m.deadlines && m.deadlines.length > 0),
     )
     .slice(0, 6);
 
@@ -569,24 +556,23 @@ function renderOverviewView() {
   } else {
     priorityContainer.innerHTML = displayEmails
       .map((msg) => {
-        const analysis = msg.analysis || {};
-        const deadlines = Array.isArray(analysis.deadlines) ? analysis.deadlines : [];
+        const deadlines = Array.isArray(msg.deadlines) ? msg.deadlines : [];
         return `
           <article class="stack-item" data-inspect-id="${escapeHtml(msg.gmailId)}" style="cursor:pointer">
             <div class="stack-item-main">
               <div class="stack-item-title">
-                ${importanceBadge(analysis.importance)}
-                ${categoryBadge(analysis.category)}
+                ${importanceBadge(msg.importance)}
+                ${categoryBadge(msg.category)}
                 <span>${escapeHtml(msg.subject)}</span>
               </div>
               <div class="stack-item-meta">
-                <span>${escapeHtml(senderDisplayName(msg.sender))}</span>
+                <span>${escapeHtml(senderDisplayName(msg.from))}</span>
                 <span>·</span>
                 <span>${escapeHtml(formatShortTime(msg.receivedAt))}</span>
-                ${analysis.replyNeeded ? `<span>· <strong style="color:var(--accent)">Reply Needed</strong></span>` : ""}
+                ${msg.replyNeeded ? `<span>· <strong style="color:var(--accent)">Reply Needed</strong></span>` : ""}
                 ${deadlines.length > 0 ? `<span>· Deadline: ${escapeHtml(deadlines[0])}</span>` : ""}
               </div>
-              <div class="stack-item-desc">${escapeHtml(analysis.summary || msg.snippet)}</div>
+              <div class="stack-item-desc">${escapeHtml(msg.summary)}</div>
             </div>
             <div class="stack-item-actions">
               <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(msg.gmailId)}">Inspect</button>
@@ -598,7 +584,7 @@ function renderOverviewView() {
       .join("");
   }
 
-  // Latest Generated Reports List
+  // Latest Generated Reports
   const reportsContainer = el("ov-reports-list");
   const recentRuns = runs.slice(0, 5);
   if (recentRuns.length === 0) {
@@ -611,7 +597,7 @@ function renderOverviewView() {
   } else {
     reportsContainer.innerHTML = recentRuns
       .map((run) => {
-        const hasDocx = Boolean(run.docxPath);
+        const hasDocx = Boolean(run.localPath);
         const hasDrive = Boolean(run.driveUrl);
         return `
           <article class="stack-item">
@@ -619,16 +605,16 @@ function renderOverviewView() {
               <div class="stack-item-title">
                 <span class="mono">📁 ${escapeHtml(run.periodLabel)}</span>
                 ${statusBadge(run.status)}
-                <span class="badge badge-neutral">${escapeHtml(run.trigger)}</span>
+                <span class="badge badge-neutral">${escapeHtml(run.kind)}</span>
               </div>
               <div class="stack-item-meta">
-                <span>${run.processedCount} emails analyzed (${run.aiCount} Gemma AI, ${run.fallbackCount} fallback)</span>
+                <span>${run.totalProcessed} emails analyzed (${run.aiCount} Gemma AI, ${run.fallbackCount} fallback)</span>
                 <span>·</span>
                 <span>Stage: ${escapeHtml(run.stage)}</span>
                 <span>·</span>
                 <span>Duration: ${escapeHtml(formatDuration(run.durationMs))}</span>
               </div>
-              ${run.errorSummary ? `<div class="stack-item-desc" style="color:var(--critical)">${escapeHtml(run.errorSummary)}</div>` : ""}
+              ${run.error ? `<div class="stack-item-desc" style="color:var(--critical)">${escapeHtml(run.error)}</div>` : ""}
             </div>
             <div class="stack-item-actions">
               ${hasDocx ? `<a class="btn btn-secondary btn-sm" href="/api/runs/${run.id}/docx">Download .docx</a>` : ""}
@@ -640,7 +626,7 @@ function renderOverviewView() {
       .join("");
   }
 
-  // Detected Action Items (Side Column)
+  // Detected Action Items
   const actionsListEl = el("ov-actions-list");
   const extractedTasks = getAllExtractedTasks(messages).slice(0, 6);
   if (extractedTasks.length === 0) {
@@ -669,7 +655,7 @@ function renderOverviewView() {
       .join("");
   }
 
-  // Recent Activity Timeline (Side Column)
+  // Recent Activity Timeline
   const timelineEl = el("ov-timeline");
   const recentLogs = (state.logs || []).slice(0, 7);
   if (recentLogs.length === 0) {
@@ -697,26 +683,23 @@ function getFilteredInboxMessages() {
 
   const q = (state.globalSearch || "").trim().toLowerCase();
   if (q) {
-    list = list.filter((msg) => {
-      const hay = `${msg.subject} ${msg.sender} ${msg.snippet} ${msg.analysis?.summary || ""} ${(msg.analysis?.actionItems || []).join(" ")}`.toLowerCase();
-      return hay.includes(q);
-    });
+    list = list.filter((msg) => msgTextBlob(msg).toLowerCase().includes(q));
   }
 
   if (state.inbox.category) {
-    list = list.filter((msg) => msg.analysis?.category === state.inbox.category);
+    list = list.filter((msg) => msg.category === state.inbox.category);
   }
 
   if (state.inbox.importance) {
-    list = list.filter((msg) => msg.analysis?.importance === state.inbox.importance);
+    list = list.filter((msg) => msg.importance === state.inbox.importance);
   }
 
   if (state.inbox.action === "action") {
-    list = list.filter((msg) => Array.isArray(msg.analysis?.actionItems) && msg.analysis.actionItems.length > 0);
+    list = list.filter((msg) => Array.isArray(msg.actionItems) && msg.actionItems.length > 0);
   } else if (state.inbox.action === "deadline") {
-    list = list.filter((msg) => Array.isArray(msg.analysis?.deadlines) && msg.analysis.deadlines.length > 0);
+    list = list.filter((msg) => Array.isArray(msg.deadlines) && msg.deadlines.length > 0);
   } else if (state.inbox.action === "reply") {
-    list = list.filter((msg) => Boolean(msg.analysis?.replyNeeded));
+    list = list.filter((msg) => Boolean(msg.replyNeeded));
   }
 
   list = [...list];
@@ -725,7 +708,7 @@ function getFilteredInboxMessages() {
   } else if (state.inbox.sort === "importance") {
     list.sort(
       (a, b) =>
-        (IMPORTANCE_WEIGHT[b.analysis?.importance] || 0) - (IMPORTANCE_WEIGHT[a.analysis?.importance] || 0) ||
+        (IMPORTANCE_WEIGHT[b.importance] || 0) - (IMPORTANCE_WEIGHT[a.importance] || 0) ||
         new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime(),
     );
   } else {
@@ -762,7 +745,6 @@ function renderInboxView() {
     return;
   }
 
-  // Ensure an email is selected if available
   const selectedExists = filtered.some((m) => m.gmailId === state.inbox.selectedGmailId);
   if (!selectedExists && pageItems.length > 0) {
     state.inbox.selectedGmailId = pageItems[0].gmailId;
@@ -770,26 +752,25 @@ function renderInboxView() {
 
   listEl.innerHTML = pageItems
     .map((msg) => {
-      const analysis = msg.analysis || {};
       const isSelected = msg.gmailId === state.inbox.selectedGmailId;
-      const isPriority = analysis.importance === "Critical" || analysis.importance === "High";
-      const actionCount = Array.isArray(analysis.actionItems) ? analysis.actionItems.length : 0;
-      const deadlineCount = Array.isArray(analysis.deadlines) ? analysis.deadlines.length : 0;
+      const isPriority = msg.importance === "Critical" || msg.importance === "High";
+      const actionCount = Array.isArray(msg.actionItems) ? msg.actionItems.length : 0;
+      const deadlineCount = Array.isArray(msg.deadlines) ? msg.deadlines.length : 0;
 
       return `
         <div class="email-row ${isSelected ? "selected" : ""} ${isPriority ? "priority-high" : ""}" data-email-id="${escapeHtml(msg.gmailId)}" role="listitem">
           <div class="email-row-top">
-            <span class="email-sender">${escapeHtml(senderDisplayName(msg.sender))}</span>
+            <span class="email-sender">${escapeHtml(senderDisplayName(msg.from))}</span>
             <span class="email-time">${escapeHtml(formatShortTime(msg.receivedAt))}</span>
           </div>
           <div class="email-subject">${escapeHtml(msg.subject)}</div>
-          <div class="email-summary">${escapeHtml(analysis.summary || msg.snippet)}</div>
+          <div class="email-summary">${escapeHtml(msg.summary)}</div>
           <div class="email-badges">
-            ${importanceBadge(analysis.importance)}
-            ${categoryBadge(analysis.category)}
+            ${importanceBadge(msg.importance)}
+            ${categoryBadge(msg.category)}
             ${actionCount > 0 ? `<span class="badge badge-neutral">${actionCount} action${actionCount === 1 ? "" : "s"}</span>` : ""}
             ${deadlineCount > 0 ? `<span class="badge badge-high">Deadline</span>` : ""}
-            ${analysis.replyNeeded ? `<span class="badge badge-forest">Reply Needed</span>` : ""}
+            ${msg.replyNeeded ? `<span class="badge badge-forest">Reply Needed</span>` : ""}
           </div>
         </div>
       `;
@@ -814,22 +795,21 @@ function renderInboxDetail(msg) {
     return;
   }
 
-  const analysis = msg.analysis || {};
-  const keyInfo = Array.isArray(analysis.keyInformation) ? analysis.keyInformation : [];
-  const actionItems = Array.isArray(analysis.actionItems) ? analysis.actionItems : [];
-  const deadlines = Array.isArray(analysis.deadlines) ? analysis.deadlines : [];
+  const keyInfo = Array.isArray(msg.keyInformation) ? msg.keyInformation : [];
+  const actionItems = Array.isArray(msg.actionItems) ? msg.actionItems : [];
+  const deadlines = Array.isArray(msg.deadlines) ? msg.deadlines : [];
 
   detailEl.innerHTML = `
     <div class="detail-header">
       <div class="email-badges" style="margin-bottom:10px">
-        ${importanceBadge(analysis.importance)}
-        ${categoryBadge(analysis.category)}
-        <span class="badge badge-neutral">${analysis.aiSummaryAvailable ? "Gemma Local AI" : "Rule Fallback"}</span>
-        ${analysis.replyNeeded ? `<span class="badge badge-forest">Reply Recommended</span>` : ""}
+        ${importanceBadge(msg.importance)}
+        ${categoryBadge(msg.category)}
+        <span class="badge badge-neutral">${msg.aiSummaryAvailable ? "Gemma Local AI" : "Rule Fallback"}</span>
+        ${msg.replyNeeded ? `<span class="badge badge-forest">Reply Recommended</span>` : ""}
       </div>
       <h2 class="detail-subject">${escapeHtml(msg.subject)}</h2>
       <div class="detail-meta">
-        <div><strong>From:</strong> ${escapeHtml(msg.sender)}</div>
+        <div><strong>From:</strong> ${escapeHtml(msg.from)}</div>
         <div><strong>Received:</strong> ${escapeHtml(formatDateTime(msg.receivedAt))} · <strong>Report Period:</strong> <span class="mono">${escapeHtml(msg.periodLabel)}</span></div>
       </div>
       <div class="detail-actions">
@@ -840,7 +820,7 @@ function renderInboxDetail(msg) {
     <div class="detail-section">
       <div class="detail-section-title">Concise AI Summary</div>
       <div class="detail-summary-box">
-        ${escapeHtml(analysis.summary || msg.snippet || "No summary available.")}
+        ${escapeHtml(msg.summary || "No summary available.")}
       </div>
     </div>
 
@@ -890,7 +870,6 @@ function inspectEmailInInbox(gmailId) {
 function renderCategoriesView() {
   const messages = getPeriodFilteredMessages();
 
-  // Render Focus Domains Grid
   const domainGrid = el("domain-categories-grid");
   domainGrid.innerHTML = FOCUS_DOMAINS.map((domain) => {
     const matched = messages.filter(domain.match);
@@ -907,10 +886,9 @@ function renderCategoriesView() {
     `;
   }).join("");
 
-  // Render Core AI Categories Grid
   const coreGrid = el("core-categories-grid");
   coreGrid.innerHTML = CORE_CATEGORIES.map((cat) => {
-    const matched = messages.filter((m) => (m.analysis?.category || "Other") === cat.id);
+    const matched = messages.filter((m) => (m.category || "Other") === cat.id);
     const active =
       state.categories.selectedType === "core" && state.categories.selectedId === cat.id;
     return `
@@ -924,17 +902,16 @@ function renderCategoriesView() {
     `;
   }).join("");
 
-  // Render Preview Panel for selected category
   let selectedTitle = "";
   let filteredMsgs = [];
   if (state.categories.selectedType === "domain") {
     const dom = FOCUS_DOMAINS.find((d) => d.id === state.categories.selectedId) || FOCUS_DOMAINS[0];
-    selectedTitle = `${dom.name} (${messages.filter(dom.match).length})`;
     filteredMsgs = messages.filter(dom.match);
+    selectedTitle = `${dom.name} (${filteredMsgs.length})`;
   } else {
     const core = CORE_CATEGORIES.find((c) => c.id === state.categories.selectedId) || CORE_CATEGORIES[0];
-    selectedTitle = `${core.name} Category (${messages.filter((m) => (m.analysis?.category || "Other") === core.id).length})`;
-    filteredMsgs = messages.filter((m) => (m.analysis?.category || "Other") === core.id);
+    filteredMsgs = messages.filter((m) => (m.category || "Other") === core.id);
+    selectedTitle = `${core.name} Category (${filteredMsgs.length})`;
   }
 
   el("category-preview-title").textContent = selectedTitle;
@@ -954,30 +931,29 @@ function renderCategoriesView() {
   } else {
     previewList.innerHTML = filteredMsgs
       .slice(0, 15)
-      .map((msg) => {
-        const analysis = msg.analysis || {};
-        return `
+      .map(
+        (msg) => `
           <article class="stack-item" data-inspect-id="${escapeHtml(msg.gmailId)}" style="cursor:pointer">
             <div class="stack-item-main">
               <div class="stack-item-title">
-                ${importanceBadge(analysis.importance)}
-                ${categoryBadge(analysis.category)}
+                ${importanceBadge(msg.importance)}
+                ${categoryBadge(msg.category)}
                 <span>${escapeHtml(msg.subject)}</span>
               </div>
               <div class="stack-item-meta">
-                <span>${escapeHtml(senderDisplayName(msg.sender))}</span>
+                <span>${escapeHtml(senderDisplayName(msg.from))}</span>
                 <span>·</span>
                 <span>${escapeHtml(formatShortTime(msg.receivedAt))}</span>
               </div>
-              <div class="stack-item-desc">${escapeHtml(analysis.summary || msg.snippet)}</div>
+              <div class="stack-item-desc">${escapeHtml(msg.summary)}</div>
             </div>
             <div class="stack-item-actions">
               <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(msg.gmailId)}">Inspect</button>
               ${msg.gmailLink ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">Gmail ↗</a>` : ""}
             </div>
           </article>
-        `;
-      })
+        `,
+      )
       .join("");
   }
 }
@@ -1077,7 +1053,7 @@ function renderReportsView() {
   const q = (state.reportsSearch || state.globalSearch || "").trim().toLowerCase();
 
   const filtered = q
-    ? runs.filter((r) => `${r.periodLabel} ${r.status} ${r.trigger} ${r.stage}`.toLowerCase().includes(q))
+    ? runs.filter((r) => `${r.periodLabel} ${r.status} ${r.kind} ${r.stage}`.toLowerCase().includes(q))
     : runs;
 
   const tbody = el("reports-table-body");
@@ -1094,30 +1070,30 @@ function renderReportsView() {
 
   tbody.innerHTML = filtered
     .map((run) => {
-      const hasDocx = Boolean(run.docxPath);
+      const hasDocx = Boolean(run.localPath);
       const hasDrive = Boolean(run.driveUrl);
       return `
         <tr>
           <td class="mono"><strong>📁 ${escapeHtml(run.periodLabel)}</strong></td>
-          <td><span class="badge badge-neutral">${escapeHtml(run.trigger)}</span></td>
+          <td><span class="badge badge-neutral">${escapeHtml(run.kind)}</span></td>
           <td>
             ${statusBadge(run.status)}
             <div class="muted-text" style="margin-top:3px">Stage: ${escapeHtml(run.stage)}</div>
-            ${run.errorSummary ? `<div style="color:var(--critical);font-size:0.75rem;margin-top:4px">${escapeHtml(run.errorSummary)}</div>` : ""}
+            ${run.error ? `<div style="color:var(--critical);font-size:0.75rem;margin-top:4px">${escapeHtml(run.error)}</div>` : ""}
           </td>
           <td>
-            <strong>${run.processedCount}</strong> included
-            <div class="muted-text">${run.fetchedCount} fetched · ${run.skippedDuplicateCount} dupes</div>
+            <strong>${run.totalProcessed}</strong> included
+            <div class="muted-text">${run.totalFetched} fetched · ${run.totalExcluded} excluded</div>
           </td>
           <td>
             <span class="mono">${run.aiCount}</span> AI / <span class="mono">${run.fallbackCount}</span> fallback
           </td>
-          <td class="mono">${escapeHtml(formatShortTime(run.completedAt || run.startedAt))}</td>
+          <td class="mono">${escapeHtml(formatShortTime(run.finishedAt || run.startedAt))}</td>
           <td class="mono">${escapeHtml(formatDuration(run.durationMs))}</td>
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               ${hasDocx ? `<a class="btn btn-secondary btn-sm" href="/api/runs/${run.id}/docx">Download .docx</a>` : ""}
-              ${hasDrive ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(run.driveUrl)}" target="_blank" rel="noreferrer">Drive Folder ↗</a>` : ""}
+              ${hasDrive ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(run.driveUrl)}" target="_blank" rel="noreferrer">Google Drive ↗</a>` : ""}
             </div>
           </td>
         </tr>
@@ -1135,27 +1111,27 @@ function renderAutomationView() {
   if (!status) return;
 
   const cfg = status.config || {};
-  const hh = String(cfg.reportHour ?? 7).padStart(2, "0");
-  const mm = String(cfg.reportMinute ?? 0).padStart(2, "0");
+  const hh = String(cfg.REPORT_HOUR ?? "7").padStart(2, "0");
+  const mm = String(cfg.REPORT_MINUTE ?? "0").padStart(2, "0");
 
   const schedBadge = el("auto-state-badge");
   if (schedBadge) {
-    schedBadge.className = `badge ${cfg.scheduleEnabled ? "badge-forest" : "badge-neutral"}`;
-    schedBadge.textContent = cfg.scheduleEnabled ? "Active" : "Disabled";
+    schedBadge.className = `badge ${status.scheduleEnabled ? "badge-forest" : "badge-neutral"}`;
+    schedBadge.textContent = status.scheduleEnabled ? "Active" : "Disabled";
   }
 
-  el("auto-schedule-time").textContent = `${hh}:${mm} ${cfg.reportTimezone || "UTC"}`;
-  el("auto-catchup-label").textContent = `Catch-up mode: ${cfg.reportCatchup || "auto"} · 15-min wake check`;
-  el("auto-next-run").textContent = status.nextScheduledRun
-    ? formatDateTime(status.nextScheduledRun)
+  el("auto-schedule-time").textContent = `${hh}:${mm} ${cfg.REPORT_TIMEZONE || "Asia/Kolkata"}`;
+  el("auto-catchup-label").textContent = `Catch-up mode: ${cfg.REPORT_CATCHUP || "auto"} · 15-min wake check`;
+  el("auto-next-run").textContent = status.nextRunAt
+    ? formatDateTime(status.nextRunAt)
     : "Scheduling disabled";
-  el("auto-last-run").textContent = status.lastSuccessfulRun
-    ? `Last completed: ${status.lastSuccessfulRun.periodLabel} (${formatShortTime(status.lastSuccessfulRun.completedAt)})`
+  el("auto-last-run").textContent = status.lastSuccess
+    ? `Last completed: ${status.lastSuccess.periodLabel} (${formatShortTime(status.lastSuccess.finishedAt)})`
     : "Last completed: none yet";
 
-  const googleOk = Boolean(status.google?.connected);
-  const ollamaOk = Boolean(status.ollama?.reachable && status.ollama?.configuredModelInstalled);
-  const driveOk = Boolean(status.google?.connected && status.driveConfigured);
+  const googleOk = status.google?.state === "connected";
+  const ollamaOk = Boolean(status.ollama?.ok && status.ollama?.installed);
+  const driveOk = Boolean(googleOk && status.driveConfigured);
   const readyCount = [googleOk, ollamaOk, driveOk].filter(Boolean).length;
 
   const readyBadge = el("auto-ready-badge");
@@ -1166,25 +1142,21 @@ function renderAutomationView() {
   el("auto-ready-summary").textContent =
     readyCount === 3 ? "All 3 integrations online" : `${readyCount} of 3 integrations ready`;
 
-  // Retry failed button
-  const hasFailed = (status.runs || []).some((r) => r.status === "failed");
   const retryBtn = el("auto-retry-btn");
   if (retryBtn) {
-    retryBtn.disabled = !hasFailed || Boolean(status.running);
+    retryBtn.disabled = !status.failedRun || Boolean(status.busy);
   }
 
-  // Hydrate automation form once
   const form = el("automation-form");
   if (form && !state.formHydrated) {
-    form.elements.SCHEDULE_ENABLED.checked = Boolean(cfg.scheduleEnabled);
-    form.elements.REPORT_HOUR.value = cfg.reportHour ?? 7;
-    form.elements.REPORT_MINUTE.value = cfg.reportMinute ?? 0;
-    form.elements.REPORT_TIMEZONE.value = cfg.reportTimezone ?? "Asia/Kolkata";
-    form.elements.REPORT_CATCHUP.value = cfg.reportCatchup ?? "auto";
+    form.elements.SCHEDULE_ENABLED.checked = Boolean(status.scheduleEnabled);
+    form.elements.REPORT_HOUR.value = cfg.REPORT_HOUR ?? "7";
+    form.elements.REPORT_MINUTE.value = cfg.REPORT_MINUTE ?? "0";
+    form.elements.REPORT_TIMEZONE.value = cfg.REPORT_TIMEZONE ?? "Asia/Kolkata";
+    form.elements.REPORT_CATCHUP.value = cfg.REPORT_CATCHUP ?? "auto";
     state.formHydrated = true;
   }
 
-  // Readiness checklist
   const readinessEl = el("auto-readiness-list");
   if (readinessEl) {
     readinessEl.innerHTML = `
@@ -1195,7 +1167,7 @@ function renderAutomationView() {
             <span>Gmail OAuth 2.0 (Read-Only Primary Inbox)</span>
           </div>
           <div class="stack-item-desc">
-            ${googleOk ? `Connected as ${escapeHtml(status.google.emailAddress || "authorized user")}. Refresh token persisted.` : "Not connected. Authorize Gmail to enable scheduled synchronization."}
+            ${googleOk ? `Connected as ${escapeHtml(status.google.email || "authorized user")}. Refresh token persisted.` : "Not connected. Authorize Gmail to enable scheduled synchronization."}
           </div>
         </div>
       </div>
@@ -1203,12 +1175,12 @@ function renderAutomationView() {
         <div class="stack-item-main">
           <div class="stack-item-title">
             <span class="status-dot ${ollamaOk ? "ok" : "warn"}"></span>
-            <span>Local Ollama &amp; Gemma Model (${escapeHtml(cfg.ollamaModel || "gemma3:4b")})</span>
+            <span>Local Ollama &amp; Gemma Model (${escapeHtml(cfg.OLLAMA_MODEL || "gemma3:4b")})</span>
           </div>
           <div class="stack-item-desc">
             ${
               ollamaOk
-                ? `Reachable at ${escapeHtml(cfg.ollamaBaseUrl)} with model installed.`
+                ? `Reachable at ${escapeHtml(cfg.OLLAMA_BASE_URL)} with model installed.`
                 : `Ollama status: ${escapeHtml(status.ollama?.error || "Model not installed; rule-based fallback will be used.")}`
             }
           </div>
@@ -1267,7 +1239,7 @@ function renderLogsView() {
         <tr>
           <td class="mono">${escapeHtml(formatDateTime(log.createdAt))}</td>
           <td><span class="badge ${badgeCls}">${escapeHtml(log.level.toUpperCase())}</span></td>
-          <td class="mono">${log.runId ? `Run #${escapeHtml(log.runId)}` : "System"}</td>
+          <td class="mono">${log.runId ? escapeHtml(String(log.runId).slice(0, 8)) : "System"}</td>
           <td>${escapeHtml(log.message)}</td>
         </tr>
       `;
@@ -1283,8 +1255,8 @@ function renderSettingsView() {
   const status = state.status;
   if (!status) return;
 
-  const googleOk = Boolean(status.google?.connected);
-  const ollamaOk = Boolean(status.ollama?.reachable && status.ollama?.configuredModelInstalled);
+  const googleOk = status.google?.state === "connected";
+  const ollamaOk = Boolean(status.ollama?.ok && status.ollama?.installed);
   const cfg = status.config || {};
 
   const gBadge = el("settings-google-badge");
@@ -1295,10 +1267,10 @@ function renderSettingsView() {
 
   el("settings-google-kv").innerHTML = `
     <div><dt>Connection State</dt><dd>${googleOk ? "Authorized &amp; Active" : "Not Connected"}</dd></div>
-    <div><dt>Connected Gmail Account</dt><dd>${escapeHtml(status.google?.emailAddress || "None")}</dd></div>
+    <div><dt>Connected Gmail Account</dt><dd>${escapeHtml(status.google?.email || "None")}</dd></div>
     <div><dt>OAuth Credentials</dt><dd>Loaded securely from server environment (hidden)</dd></div>
     <div><dt>Gmail Permission Scope</dt><dd>Read-Only (<code>gmail.readonly</code>)</dd></div>
-    <div><dt>Token Persistence</dt><dd>Encrypted local token store (auto-refresh enabled)</dd></div>
+    <div><dt>Token Persistence</dt><dd>Local token store (auto-refresh enabled)</dd></div>
   `;
 
   const oBadge = el("settings-ollama-badge");
@@ -1308,9 +1280,9 @@ function renderSettingsView() {
   }
 
   el("settings-ollama-kv").innerHTML = `
-    <div><dt>Inference Endpoint</dt><dd>${escapeHtml(cfg.ollamaBaseUrl || "http://127.0.0.1:11434")}</dd></div>
-    <div><dt>Configured Model</dt><dd>${escapeHtml(cfg.ollamaModel || "gemma3:4b")}</dd></div>
-    <div><dt>Model Installed</dt><dd>${status.ollama?.configuredModelInstalled ? "Yes (Verified)" : "No"}</dd></div>
+    <div><dt>Inference Endpoint</dt><dd>${escapeHtml(cfg.OLLAMA_BASE_URL || "http://127.0.0.1:11434")}</dd></div>
+    <div><dt>Configured Model</dt><dd>${escapeHtml(cfg.OLLAMA_MODEL || "gemma3:4b")}</dd></div>
+    <div><dt>Model Installed</dt><dd>${status.ollama?.installed ? "Yes (Verified)" : "No"}</dd></div>
     <div><dt>Installed Local Models</dt><dd>${escapeHtml((status.ollama?.models || []).join(", ") || "None detected")}</dd></div>
     <div><dt>Cloud / Paid API Usage</dt><dd>Strictly Disabled (100% Local Inference)</dd></div>
   `;
@@ -1324,7 +1296,7 @@ function renderSettingsView() {
   el("settings-storage-kv").innerHTML = `
     <div><dt>Google Drive Target Folder</dt><dd>${status.driveConfigured ? "Configured via server environment (ID hidden)" : "Drive root"}</dd></div>
     <div><dt>Drive Folder Hierarchy</dt><dd>Date-wise subfolders (<code>YYYY-MM-DD / MailMind_Report_YYYY-MM-DD.docx</code>)</dd></div>
-    <div><dt>Local Report Archive</dt><dd><code>reports/YYYY/MM/MailMind_Report_YYYY-MM-DD.docx</code></dd></div>
+    <div><dt>Local Report Archive</dt><dd><code>data/reports/MailMind_Report_YYYY-MM-DD.docx</code></dd></div>
     <div><dt>Database Engine</dt><dd>Local SQLite (<code>node:sqlite</code> with WAL mode &amp; run locking)</dd></div>
   `;
 }
@@ -1367,12 +1339,12 @@ async function refreshAllData() {
   try {
     const [status, messagesData, logsData] = await Promise.all([
       apiJson("/api/status"),
-      apiJson("/api/messages?limit=500"),
-      apiJson("/api/logs?limit=120"),
+      apiJson("/api/messages"),
+      apiJson("/api/logs"),
     ]);
     state.status = status;
     state.messages = messagesData.messages || [];
-    state.logs = logsData.logs || [];
+    state.logs = Array.isArray(logsData) ? logsData : logsData.logs || [];
     state.isLoading = false;
 
     updatePeriodSelector();
@@ -1384,7 +1356,7 @@ async function refreshAllData() {
 
 async function triggerRun(payload = {}) {
   try {
-    await apiJson("/api/runs/now", {
+    await apiJson("/api/runs", {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -1400,51 +1372,41 @@ async function triggerRun(payload = {}) {
    ========================================================================== */
 
 function initEvents() {
-  // Sidebar view navigation
   document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
     btn.addEventListener("click", () => {
       switchView(btn.getAttribute("data-view"));
     });
   });
 
-  // Quick goto buttons inside panels
   document.querySelectorAll("[data-goto]").forEach((btn) => {
     btn.addEventListener("click", () => {
       switchView(btn.getAttribute("data-goto"));
     });
   });
 
-  // Sidebar collapse
   el("sidebar-collapse")?.addEventListener("click", () => {
     el("app-layout")?.classList.toggle("sidebar-collapsed");
   });
 
-  // Mobile menu button
   el("mobile-menu-btn")?.addEventListener("click", () => {
     el("sidebar")?.classList.toggle("mobile-open");
   });
 
-  // Global search
   el("global-search")?.addEventListener("input", (e) => {
     state.globalSearch = e.target.value || "";
     state.inbox.page = 1;
     renderActiveView();
   });
 
-  // Period selector
   el("period-selector")?.addEventListener("change", (e) => {
     state.selectedPeriod = e.target.value || "";
     state.inbox.page = 1;
     renderActiveView();
   });
 
-  // Topbar Run Report Now
-  el("top-run-now")?.addEventListener("click", () => triggerRun({}));
+  el("top-run-now")?.addEventListener("click", () => triggerRun({ mode: "now" }));
+  el("ov-run-test")?.addEventListener("click", () => triggerRun({ mode: "test", limit: 3 }));
 
-  // Overview 3-email test button
-  el("ov-run-test")?.addEventListener("click", () => triggerRun({ maxMessages: 3, trigger: "test" }));
-
-  // Delegated click for inspecting an email from any list/table
   document.body.addEventListener("click", (e) => {
     const inspectTarget = e.target.closest("[data-inspect-id]");
     if (inspectTarget) {
@@ -1468,7 +1430,6 @@ function initEvents() {
     }
   });
 
-  // Inbox filters
   el("inbox-filter-category")?.addEventListener("change", (e) => {
     state.inbox.category = e.target.value;
     state.inbox.page = 1;
@@ -1520,7 +1481,6 @@ function initEvents() {
     renderInboxView();
   });
 
-  // Categories -> Open in Inbox Intelligence button
   el("category-open-inbox")?.addEventListener("click", () => {
     if (state.categories.selectedType === "core") {
       state.inbox.category = state.categories.selectedId;
@@ -1532,30 +1492,27 @@ function initEvents() {
     switchView("inbox");
   });
 
-  // Action Items filter
   el("actions-filter")?.addEventListener("change", (e) => {
     state.actionsFilter = e.target.value;
     renderActionsView();
   });
 
-  // Reports range form & buttons
   el("reports-range-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const from = String(fd.get("from") || "");
     const to = String(fd.get("to") || "");
     if (!from || !to) return;
-    await triggerRun({ from, to });
+    await triggerRun({ mode: "now", from, to });
   });
 
-  el("reports-run-yesterday")?.addEventListener("click", () => triggerRun({}));
-  el("reports-run-test")?.addEventListener("click", () => triggerRun({ maxMessages: 3, trigger: "test" }));
+  el("reports-run-yesterday")?.addEventListener("click", () => triggerRun({ mode: "now" }));
+  el("reports-run-test")?.addEventListener("click", () => triggerRun({ mode: "test", limit: 3 }));
   el("reports-search")?.addEventListener("input", (e) => {
     state.reportsSearch = e.target.value || "";
     renderReportsView();
   });
 
-  // Automation form & buttons
   el("automation-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -1568,7 +1525,7 @@ function initEvents() {
     };
     try {
       await apiJson("/api/settings", {
-        method: "POST",
+        method: "PUT",
         body: JSON.stringify(payload),
       });
       state.formHydrated = false;
@@ -1579,19 +1536,12 @@ function initEvents() {
     }
   });
 
-  el("auto-run-now")?.addEventListener("click", () => triggerRun({}));
+  el("auto-run-now")?.addEventListener("click", () => triggerRun({ mode: "now" }));
 
   el("auto-retry-btn")?.addEventListener("click", async () => {
-    try {
-      await apiJson("/api/runs/retry", { method: "POST", body: "{}" });
-      showToast("Retrying latest failed report run…");
-      await refreshAllData();
-    } catch (error) {
-      showToast(error.message, true);
-    }
+    await triggerRun({ mode: "retry" });
   });
 
-  // Logs filters
   el("logs-level-filter")?.addEventListener("change", (e) => {
     state.logsFilter.level = e.target.value || "";
     renderLogsView();
@@ -1603,16 +1553,6 @@ function initEvents() {
   });
 
   el("logs-refresh-btn")?.addEventListener("click", () => refreshAllData());
-
-  // Check URL query notifications (?google=connected or ?error=...)
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("google") === "connected") {
-    showToast("Gmail account connected. Daily automation is active.");
-    window.history.replaceState({}, "", "/");
-  } else if (params.get("error")) {
-    showToast(params.get("error"), true);
-    window.history.replaceState({}, "", "/");
-  }
 }
 
 initEvents();
