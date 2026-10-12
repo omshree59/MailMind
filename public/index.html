@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MailMind AI — Automated Inbox Intelligence</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="eyebrow">Local Gemma AI · Primary Inbox · Google Drive</span>
+        <h1>MailMind AI</h1>
+        <p class="subtitle">Automated daily Word reports from your main Gmail inbox, organized into date-wise Google Drive folders.</p>
+      </div>
+      <div class="status-group">
+        <span id="ollama-pill" class="pill">Checking local AI…</span>
+        <span id="google-pill" class="pill">Checking Gmail…</span>
+      </div>
+    </header>
+
+    <section id="connect-card" class="connect-hero hidden">
+      <div class="connect-copy">
+        <h2>Connect your Gmail account</h2>
+        <p>Authorize read-only access to your Primary Inbox and Google Drive once. MailMind will automatically generate and upload your daily report every day without asking again.</p>
+      </div>
+      <a class="btn btn-primary btn-lg" href="/oauth/start">Connect with Gmail</a>
+    </section>
+
+    <section id="missed" class="banner hidden"></section>
+
+    <section class="kpi-grid" id="kpis">
+      <div class="kpi-card">
+        <span class="kpi-label">Automation Status</span>
+        <strong class="kpi-value" id="kpi-status">Checking…</strong>
+        <span class="kpi-meta" id="kpi-filter">Primary Inbox only (no promotions/updates)</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Connected Account</span>
+        <strong class="kpi-value" id="kpi-account">—</strong>
+        <span class="kpi-meta" id="kpi-drive">Date-wise Google Drive folders active</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Next Scheduled Run</span>
+        <strong class="kpi-value" id="kpi-next">—</strong>
+        <span class="kpi-meta" id="kpi-tz">Timezone: Asia/Kolkata</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Latest Report</span>
+        <strong class="kpi-value" id="kpi-last">None yet</strong>
+        <span class="kpi-meta" id="kpi-last-meta">Saved to Google Drive &amp; local .docx</span>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-head">
+          <h2>Report Actions</h2>
+          <span class="badge">Primary Inbox Only</span>
+        </div>
+        <p class="card-desc">Generate a report immediately, test with 3 recent primary emails, or open your latest Word report in Google Drive.</p>
+        <div class="actions">
+          <button id="run-now" class="btn btn-primary" type="button">Run report now</button>
+          <button id="run-test" class="btn btn-secondary" type="button">Test (3 emails)</button>
+          <button id="retry" class="btn btn-secondary" type="button" disabled>Retry failed run</button>
+          <a id="open-report" class="btn btn-outline hidden" href="#" target="_blank" rel="noreferrer">Open latest Drive report ↗</a>
+        </div>
+        <p id="action-message" class="hint"></p>
+
+        <hr class="divider">
+
+        <h3>Custom Date Range</h3>
+        <form id="range" class="range-form">
+          <label>From
+            <input name="from" type="date" required>
+          </label>
+          <label>To
+            <input name="to" type="date" required>
+          </label>
+          <button class="btn btn-secondary" type="submit">Run date range</button>
+        </form>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Daily Automation Schedule</h2>
+          <span id="schedule-badge" class="badge">Active</span>
+        </div>
+        <p class="card-desc">Runs automatically every day for your connected Gmail account and uploads into a date-wise folder (`YYYY-MM-DD`) in Google Drive.</p>
+        <form id="settings" class="settings-form">
+          <label class="toggle-row">
+            <input name="SCHEDULE_ENABLED" type="checkbox">
+            <span>Enable automatic daily report</span>
+          </label>
+          <div class="form-row">
+            <label>Hour (0–23)
+              <input name="REPORT_HOUR" type="number" min="0" max="23" required>
+            </label>
+            <label>Minute (0–59)
+              <input name="REPORT_MINUTE" type="number" min="0" max="59" required>
+            </label>
+            <label>Timezone
+              <input name="REPORT_TIMEZONE" required>
+            </label>
+          </div>
+          <label>Missed-run recovery
+            <select name="REPORT_CATCHUP">
+              <option value="auto">Run automatically on startup / wake</option>
+              <option value="offer">Ask before running missed report</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <div class="actions">
+            <button class="btn btn-primary" type="submit">Save schedule</button>
+          </div>
+        </form>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Report History &amp; Date-Wise Drive Links</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Started</th>
+              <th>Date Folder</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Stage</th>
+              <th>Primary Emails</th>
+              <th>AI Analysis</th>
+              <th>Report Files</th>
+            </tr>
+          </thead>
+          <tbody id="runs"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Activity Logs</h2>
+        <button id="refresh-logs" class="btn btn-secondary btn-sm" type="button">Refresh</button>
+      </div>
+      <ol id="logs"></ol>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
