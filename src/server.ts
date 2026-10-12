@@ -99,6 +99,7 @@ export function createApp(runtime: AppRuntime): express.Express {
     const current = runtime.db.listRunning()[0] ?? null;
     res.json({
       config: settingsFromConfig(config),
+      driveConfigured: Boolean(config.driveFolderId),
       ollama,
       google,
       scheduleEnabled: config.scheduleEnabled,
@@ -109,7 +110,7 @@ export function createApp(runtime: AppRuntime): express.Express {
       busy: runtime.busy() || Boolean(current),
       failedRun: runtime.db.latestFailed(),
       missed: missedLabel && !missedDone ? { periodLabel: missedLabel } : null,
-      runs: runtime.db.listRuns(20),
+      runs: runtime.db.listRuns(50),
     });
   });
 
@@ -220,6 +221,60 @@ export function createApp(runtime: AppRuntime): express.Express {
       return;
     }
     res.download(run.localPath, run.filename);
+  });
+
+  app.get("/api/messages", (req, res) => {
+    const requestedRunId = typeof req.query.runId === "string" ? req.query.runId : "";
+    const requestedPeriod = typeof req.query.period === "string" ? req.query.period : "";
+    const runs = runtime.db.listRuns(50);
+    const targetRuns = requestedRunId
+      ? runs.filter((r) => r.id === requestedRunId)
+      : requestedPeriod
+        ? runs.filter((r) => r.periodLabel === requestedPeriod)
+        : runs;
+
+    const seen = new Set<string>();
+    const items: Array<Record<string, unknown>> = [];
+    for (const run of targetRuns) {
+      const messages = runtime.db.listMessages(run.id);
+      for (const msg of messages) {
+        if (seen.has(msg.gmailId)) continue;
+        seen.add(msg.gmailId);
+        let analysis: Record<string, unknown> | null = null;
+        if (msg.analysisJson) {
+          try {
+            analysis = JSON.parse(msg.analysisJson) as Record<string, unknown>;
+          } catch {
+            analysis = null;
+          }
+        }
+        items.push({
+          runId: run.id,
+          periodLabel: run.periodLabel,
+          gmailId: msg.gmailId,
+          threadId: msg.threadId,
+          from: msg.fromAddr,
+          subject: msg.subject,
+          receivedAt: msg.receivedAt,
+          truncated: msg.truncated === 1,
+          status: msg.status,
+          error: msg.error,
+          gmailLink: `https://mail.google.com/mail/u/0/#all/${msg.gmailId}`,
+          category: analysis?.category ?? "Other",
+          importance: analysis?.importance ?? "Low",
+          summary: analysis?.summary ?? (msg.error ? "Processing failed." : "Pending analysis…"),
+          keyInformation: Array.isArray(analysis?.keyInformation) ? analysis.keyInformation : [],
+          actionItems: Array.isArray(analysis?.actionItems) ? analysis.actionItems : [],
+          deadlines: Array.isArray(analysis?.deadlines) ? analysis.deadlines : [],
+          replyNeeded: Boolean(analysis?.replyNeeded),
+          aiSummaryAvailable: Boolean(analysis?.aiSummaryAvailable),
+          analysisSource: analysis?.analysisSource ?? "rules",
+          warnings: Array.isArray(analysis?.warnings) ? analysis.warnings : [],
+        });
+      }
+    }
+    items.sort((a, b) => String(b.receivedAt || "").localeCompare(String(a.receivedAt || "")));
+    res.json({ messages: items });
   });
 
   app.get("/api/logs", (req, res) => {

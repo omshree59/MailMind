@@ -3,151 +3,650 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MailMind AI — Automated Inbox Intelligence</title>
+  <title>MailMind AI — Editorial Inbox Intelligence &amp; Daily Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand">
-        <span class="eyebrow">Local Gemma AI · Primary Inbox · Google Drive</span>
-        <h1>MailMind AI</h1>
-        <p class="subtitle">Automated daily Word reports from your main Gmail inbox, organized into date-wise Google Drive folders.</p>
-      </div>
-      <div class="status-group">
-        <span id="ollama-pill" class="pill">Checking local AI…</span>
-        <span id="google-pill" class="pill">Checking Gmail…</span>
-      </div>
-    </header>
-
-    <section id="connect-card" class="connect-hero hidden">
-      <div class="connect-copy">
-        <h2>Connect your Gmail account</h2>
-        <p>Authorize read-only access to your Primary Inbox and Google Drive once. MailMind will automatically generate and upload your daily report every day without asking again.</p>
-      </div>
-      <a class="btn btn-primary btn-lg" href="/oauth/start">Connect with Gmail</a>
-    </section>
-
-    <section id="missed" class="banner hidden"></section>
-
-    <section class="kpi-grid" id="kpis">
-      <div class="kpi-card">
-        <span class="kpi-label">Automation Status</span>
-        <strong class="kpi-value" id="kpi-status">Checking…</strong>
-        <span class="kpi-meta" id="kpi-filter">Primary Inbox only (no promotions/updates)</span>
-      </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Connected Account</span>
-        <strong class="kpi-value" id="kpi-account">—</strong>
-        <span class="kpi-meta" id="kpi-drive">Date-wise Google Drive folders active</span>
-      </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Next Scheduled Run</span>
-        <strong class="kpi-value" id="kpi-next">—</strong>
-        <span class="kpi-meta" id="kpi-tz">Timezone: Asia/Kolkata</span>
-      </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Latest Report</span>
-        <strong class="kpi-value" id="kpi-last">None yet</strong>
-        <span class="kpi-meta" id="kpi-last-meta">Saved to Google Drive &amp; local .docx</span>
-      </div>
-    </section>
-
-    <section class="grid">
-      <article class="card">
-        <div class="card-head">
-          <h2>Report Actions</h2>
-          <span class="badge">Primary Inbox Only</span>
-        </div>
-        <p class="card-desc">Generate a report immediately, test with 3 recent primary emails, or open your latest Word report in Google Drive.</p>
-        <div class="actions">
-          <button id="run-now" class="btn btn-primary" type="button">Run report now</button>
-          <button id="run-test" class="btn btn-secondary" type="button">Test (3 emails)</button>
-          <button id="retry" class="btn btn-secondary" type="button" disabled>Retry failed run</button>
-          <a id="open-report" class="btn btn-outline hidden" href="#" target="_blank" rel="noreferrer">Open latest Drive report ↗</a>
-        </div>
-        <p id="action-message" class="hint"></p>
-
-        <hr class="divider">
-
-        <h3>Custom Date Range</h3>
-        <form id="range" class="range-form">
-          <label>From
-            <input name="from" type="date" required>
-          </label>
-          <label>To
-            <input name="to" type="date" required>
-          </label>
-          <button class="btn btn-secondary" type="submit">Run date range</button>
-        </form>
-      </article>
-
-      <article class="card">
-        <div class="card-head">
-          <h2>Daily Automation Schedule</h2>
-          <span id="schedule-badge" class="badge">Active</span>
-        </div>
-        <p class="card-desc">Runs automatically every day for your connected Gmail account and uploads into a date-wise folder (`YYYY-MM-DD`) in Google Drive.</p>
-        <form id="settings" class="settings-form">
-          <label class="toggle-row">
-            <input name="SCHEDULE_ENABLED" type="checkbox">
-            <span>Enable automatic daily report</span>
-          </label>
-          <div class="form-row">
-            <label>Hour (0–23)
-              <input name="REPORT_HOUR" type="number" min="0" max="23" required>
-            </label>
-            <label>Minute (0–59)
-              <input name="REPORT_MINUTE" type="number" min="0" max="59" required>
-            </label>
-            <label>Timezone
-              <input name="REPORT_TIMEZONE" required>
-            </label>
+  <div class="app-layout" id="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar" aria-label="Primary Navigation">
+      <div class="sidebar-header">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+            </svg>
           </div>
-          <label>Missed-run recovery
-            <select name="REPORT_CATCHUP">
-              <option value="auto">Run automatically on startup / wake</option>
-              <option value="offer">Ask before running missed report</option>
-              <option value="off">Off</option>
+          <div class="brand-text">
+            <span class="brand-name">MailMind AI</span>
+            <span class="brand-tag">Local Gemma Workspace</span>
+          </div>
+        </div>
+        <button id="sidebar-collapse" class="icon-btn" type="button" title="Toggle sidebar" aria-label="Toggle sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <path d="M9 3v18"></path>
+          </svg>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav" role="navigation">
+        <div class="nav-group-label">Workspace</div>
+        <button class="nav-item active" data-view="overview" type="button" title="Overview">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="nav-label">Overview</span>
+        </button>
+        <button class="nav-item" data-view="inbox" type="button" title="Inbox Intelligence">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          <span class="nav-label">Inbox Intelligence</span>
+          <span class="nav-count" id="nav-count-inbox">0</span>
+        </button>
+        <button class="nav-item" data-view="categories" type="button" title="Categories">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          <span class="nav-label">Categories</span>
+        </button>
+        <button class="nav-item" data-view="actions" type="button" title="Action Items">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span class="nav-label">Action Items</span>
+          <span class="nav-count" id="nav-count-actions">0</span>
+        </button>
+
+        <div class="nav-group-label">Operations</div>
+        <button class="nav-item" data-view="reports" type="button" title="Daily Reports">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span class="nav-label">Daily Reports</span>
+          <span class="nav-count" id="nav-count-reports">0</span>
+        </button>
+        <button class="nav-item" data-view="automation" type="button" title="Automation">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span class="nav-label">Automation</span>
+        </button>
+        <button class="nav-item" data-view="logs" type="button" title="Activity Logs">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          <span class="nav-label">Activity Logs</span>
+        </button>
+        <button class="nav-item" data-view="settings" type="button" title="Settings">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer" aria-label="Service Readiness">
+        <div class="service-group-title">System Health</div>
+        <div class="service-row">
+          <span class="status-dot" id="dot-gmail"></span>
+          <span class="service-name">Gmail OAuth</span>
+          <span class="service-state" id="state-gmail">Checking</span>
+        </div>
+        <div class="service-row">
+          <span class="status-dot" id="dot-ollama"></span>
+          <span class="service-name">Ollama / Gemma</span>
+          <span class="service-state" id="state-ollama">Checking</span>
+        </div>
+        <div class="service-row">
+          <span class="status-dot" id="dot-drive"></span>
+          <span class="service-name">Google Drive</span>
+          <span class="service-state" id="state-drive">Checking</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <div class="workspace">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="mobile-menu-btn" class="icon-btn mobile-only" type="button" aria-label="Open menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div>
+            <h1 id="page-title" class="page-title">Overview</h1>
+            <p id="page-subtitle" class="page-subtitle">Daily Primary Inbox intelligence, Gemma summarization, and Google Drive synchronization.</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="search-field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="global-search" type="search" placeholder="Search sender, subject, task…" aria-label="Search emails and tasks">
+          </div>
+
+          <label class="period-picker" title="Filter by reporting period">
+            <span class="sr-only">Reporting Period</span>
+            <select id="period-selector" aria-label="Reporting period selector">
+              <option value="">All synchronized periods</option>
             </select>
           </label>
-          <div class="actions">
-            <button class="btn btn-primary" type="submit">Save schedule</button>
+
+          <div class="account-chip" id="account-chip">
+            <span class="status-dot" id="chip-dot"></span>
+            <span id="chip-label">Checking account…</span>
           </div>
-        </form>
-      </article>
-    </section>
 
-    <section class="card">
-      <div class="card-head">
-        <h2>Report History &amp; Date-Wise Drive Links</h2>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Started</th>
-              <th>Date Folder</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Stage</th>
-              <th>Primary Emails</th>
-              <th>AI Analysis</th>
-              <th>Report Files</th>
-            </tr>
-          </thead>
-          <tbody id="runs"></tbody>
-        </table>
-      </div>
-    </section>
+          <button id="top-run-now" class="btn btn-primary" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Run Report Now</span>
+          </button>
+        </div>
+      </header>
 
-    <section class="card">
-      <div class="card-head">
-        <h2>Activity Logs</h2>
-        <button id="refresh-logs" class="btn btn-secondary btn-sm" type="button">Refresh</button>
+      <!-- Global Banners (Connect Gmail / Missed Run / Active Job Progress / Feedback) -->
+      <div class="alerts-stack">
+        <section id="connect-banner" class="alert-banner connect-alert hidden" aria-live="polite">
+          <div class="alert-body">
+            <strong>Connect your Gmail account to activate MailMind AI</strong>
+            <span>Authorize read-only Primary Inbox access and Google Drive upload once. Daily automation will run automatically thereafter.</span>
+          </div>
+          <a class="btn btn-primary" href="/oauth/start">Connect with Gmail</a>
+        </section>
+
+        <section id="missed-banner" class="alert-banner warn-alert hidden" aria-live="polite"></section>
+
+        <section id="running-banner" class="alert-banner info-alert hidden" aria-live="polite">
+          <div class="alert-body">
+            <strong id="running-title">Report pipeline running…</strong>
+            <span id="running-detail">Gemma is analyzing Primary Inbox messages and building your Word report.</span>
+          </div>
+          <span class="badge badge-forest" id="running-stage-badge">Processing</span>
+        </section>
+
+        <div id="toast-bar" class="toast-bar hidden" role="status" aria-live="polite"></div>
       </div>
-      <ol id="logs"></ol>
-    </section>
+
+      <!-- Main Views Container -->
+      <main class="main-content">
+
+        <!-- VIEW 1: OVERVIEW -->
+        <section id="view-overview" class="view-section active">
+          <div class="metrics-strip">
+            <article class="metric-card">
+              <div class="metric-head">
+                <span class="metric-label">Primary Emails Processed</span>
+                <span class="badge badge-neutral" id="ov-period-tag">All Periods</span>
+              </div>
+              <div class="metric-value" id="ov-total-emails">0</div>
+              <div class="metric-foot" id="ov-ai-breakdown">Promotions &amp; updates excluded</div>
+            </article>
+
+            <article class="metric-card">
+              <div class="metric-head">
+                <span class="metric-label">Requires Attention</span>
+                <span class="badge badge-high">Critical &amp; High</span>
+              </div>
+              <div class="metric-value" id="ov-high-priority">0</div>
+              <div class="metric-foot" id="ov-reply-count">0 awaiting reply</div>
+            </article>
+
+            <article class="metric-card">
+              <div class="metric-head">
+                <span class="metric-label">Pending Actions &amp; Deadlines</span>
+                <span class="badge badge-forest">Extracted</span>
+              </div>
+              <div class="metric-value" id="ov-actions-count">0</div>
+              <div class="metric-foot" id="ov-deadlines-count">0 explicit deadlines verified</div>
+            </article>
+
+            <article class="metric-card">
+              <div class="metric-head">
+                <span class="metric-label">Synchronization &amp; Schedule</span>
+                <span class="badge" id="ov-schedule-badge">Checking</span>
+              </div>
+              <div class="metric-value metric-value-sm" id="ov-next-run">—</div>
+              <div class="metric-foot" id="ov-last-sync">Last sync: none yet</div>
+            </article>
+          </div>
+
+          <div class="overview-columns">
+            <div class="col-main">
+              <!-- Priority Emails Requiring Attention -->
+              <section class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h2 class="panel-title">Important Emails Requiring Attention</h2>
+                    <p class="panel-subtitle">Critical and High-importance messages from your Primary Inbox, or messages needing a reply.</p>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" data-goto="inbox" type="button">View all emails →</button>
+                </div>
+                <div id="ov-priority-list" class="stack-list"></div>
+              </section>
+
+              <!-- Latest Generated Reports -->
+              <section class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h2 class="panel-title">Latest Generated Reports</h2>
+                    <p class="panel-subtitle">Formatted Word (`.docx`) reports saved locally and uploaded to date-wise Google Drive folders.</p>
+                  </div>
+                  <div class="panel-actions">
+                    <button id="ov-run-test" class="btn btn-secondary btn-sm" type="button">Test (3 Emails)</button>
+                    <button class="btn btn-ghost btn-sm" data-goto="reports" type="button">All reports →</button>
+                  </div>
+                </div>
+                <div id="ov-reports-list" class="stack-list"></div>
+              </section>
+            </div>
+
+            <div class="col-side">
+              <!-- Upcoming Deadlines & Action Items -->
+              <section class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h2 class="panel-title">Detected Action Items</h2>
+                    <p class="panel-subtitle">Tasks and verbatim deadlines extracted by Gemma.</p>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" data-goto="actions" type="button">All tasks →</button>
+                </div>
+                <div id="ov-actions-list" class="compact-list"></div>
+              </section>
+
+              <!-- Recent Activity Timeline -->
+              <section class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h2 class="panel-title">Recent Activity Timeline</h2>
+                    <p class="panel-subtitle">Live operational events from the backend engine.</p>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" data-goto="logs" type="button">Full logs →</button>
+                </div>
+                <ol id="ov-timeline" class="timeline-list"></ol>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 2: INBOX INTELLIGENCE -->
+        <section id="view-inbox" class="view-section">
+          <div class="filter-bar">
+            <div class="filter-group">
+              <label>
+                <span>Category</span>
+                <select id="inbox-filter-category">
+                  <option value="">All Categories</option>
+                  <option value="Work">Work</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Security">Security</option>
+                  <option value="Meetings">Meetings</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Notifications">Notifications</option>
+                  <option value="Newsletters">Newsletters</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Importance</span>
+                <select id="inbox-filter-importance">
+                  <option value="">All Importance</option>
+                  <option value="Critical">Critical</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Requirement</span>
+                <select id="inbox-filter-action">
+                  <option value="">All Emails</option>
+                  <option value="action">Has Action Items</option>
+                  <option value="deadline">Has Explicit Deadline</option>
+                  <option value="reply">Reply Needed</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Sort By</span>
+                <select id="inbox-sort">
+                  <option value="date-desc">Newest First</option>
+                  <option value="date-asc">Oldest First</option>
+                  <option value="importance">Highest Importance</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="filter-meta">
+              <span id="inbox-result-count" class="muted-text">0 emails</span>
+              <button id="inbox-reset-filters" class="btn btn-ghost btn-sm" type="button">Reset filters</button>
+            </div>
+          </div>
+
+          <div class="inbox-split">
+            <div class="inbox-list-pane panel">
+              <div id="inbox-list" class="email-list" role="list"></div>
+              <div class="pagination-bar" id="inbox-pagination">
+                <button id="inbox-prev" class="btn btn-secondary btn-sm" type="button">Previous</button>
+                <span id="inbox-page-info" class="muted-text">Page 1 of 1</span>
+                <button id="inbox-next" class="btn btn-secondary btn-sm" type="button">Next</button>
+              </div>
+            </div>
+
+            <aside class="inbox-detail-pane panel" id="inbox-detail" aria-label="Email Intelligence Detail">
+              <div class="empty-state">
+                <p class="empty-title">Select an email to inspect</p>
+                <p class="empty-desc">View Gemma's concise summary, extracted key facts, explicit deadlines, action items, and open the original thread in Gmail.</p>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- VIEW 3: CATEGORIES -->
+        <section id="view-categories" class="view-section">
+          <div class="section-intro">
+            <div>
+              <h2 class="section-heading">Domain Lenses &amp; Mail Categories</h2>
+              <p class="section-desc">Genuine counts derived from your synchronized Primary Inbox emails. Click any card to inspect the matching messages.</p>
+            </div>
+          </div>
+
+          <h3 class="sub-heading">Focus Domains</h3>
+          <div id="domain-categories-grid" class="category-grid"></div>
+
+          <h3 class="sub-heading">Core AI Classification Categories</h3>
+          <div id="core-categories-grid" class="category-grid"></div>
+
+          <section class="panel" id="category-preview-panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title" id="category-preview-title">Category Emails</h2>
+                <p class="panel-subtitle" id="category-preview-subtitle">Select a category card above to filter emails.</p>
+              </div>
+              <button id="category-open-inbox" class="btn btn-secondary btn-sm" type="button">Open in Inbox Intelligence →</button>
+            </div>
+            <div id="category-emails-list" class="stack-list"></div>
+          </section>
+        </section>
+
+        <!-- VIEW 4: ACTION ITEMS -->
+        <section id="view-actions" class="view-section">
+          <div class="filter-bar">
+            <div class="filter-group">
+              <label>
+                <span>Filter Tasks</span>
+                <select id="actions-filter">
+                  <option value="all">All Action Items &amp; Deadlines</option>
+                  <option value="deadline">With Explicit Deadline Only</option>
+                  <option value="critical-high">Critical &amp; High Priority Only</option>
+                  <option value="reply">Reply Required</option>
+                </select>
+              </label>
+            </div>
+            <div class="filter-meta">
+              <span class="muted-text">Deadlines are strictly verified verbatim against the email text—never invented.</span>
+            </div>
+          </div>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">Extracted Tasks &amp; Explicit Deadlines</h2>
+                <p class="panel-subtitle">Derived from analyzed Primary Inbox emails. MailMind operates in read-only mode (`gmail.readonly`); open the source email in Gmail to reply or act.</p>
+              </div>
+            </div>
+            <div id="actions-table-wrap" class="table-container"></div>
+          </section>
+        </section>
+
+        <!-- VIEW 5: DAILY REPORTS -->
+        <section id="view-reports" class="view-section">
+          <div class="reports-top-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">Generate or Backfill Report</h2>
+                  <p class="panel-subtitle">Run yesterday's default report, test with 3 primary emails, or generate a report for a specific date window (up to 31 days).</p>
+                </div>
+              </div>
+              <form id="reports-range-form" class="inline-form">
+                <label>
+                  <span>From Date</span>
+                  <input name="from" type="date" required>
+                </label>
+                <label>
+                  <span>To Date</span>
+                  <input name="to" type="date" required>
+                </label>
+                <button class="btn btn-primary" type="submit">Generate Range Report</button>
+                <button id="reports-run-yesterday" class="btn btn-secondary" type="button">Run Yesterday's Report</button>
+                <button id="reports-run-test" class="btn btn-ghost" type="button">Run 3-Email Test</button>
+              </form>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">Historical Word Reports &amp; Google Drive Archives</h2>
+                <p class="panel-subtitle">Every completed report is saved locally as `MailMind_Report_YYYY-MM-DD.docx` and uploaded into a date-wise folder (`YYYY-MM-DD`) in Google Drive.</p>
+              </div>
+              <div class="panel-actions">
+                <input id="reports-search" class="input-sm" type="search" placeholder="Filter by date (YYYY-MM-DD) or status…">
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date Folder / Period</th>
+                    <th>Type</th>
+                    <th>Status &amp; Stage</th>
+                    <th>Emails Included</th>
+                    <th>AI / Rule Fallback</th>
+                    <th>Generated At</th>
+                    <th>Duration</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="reports-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- VIEW 6: AUTOMATION CENTER -->
+        <section id="view-automation" class="view-section">
+          <div class="metrics-strip metrics-strip-3">
+            <article class="metric-card">
+              <div class="metric-head">
+                <span class="metric-label">Scheduler State</span>
+                <span class="badge" id="auto-state-badge">Checking</span>
+              </div>
+              <div class="metric-value metric-value-sm" id="auto-schedule-time">07:00 Asia/Kolkata</div>
+              <div class="metric-foot" id="auto-catchup-label">Wake recovery active</div>
+            </article>
+
+            <article class="metric-card">
+              <div class="metric-head">
+                <span class="metric-label">Next Scheduled Execution</span>
+                <span class="badge badge-neutral">node-cron</span>
+              </div>
+              <div class="metric-value metric-value-sm" id="auto-next-run">—</div>
+              <div class="metric-foot" id="auto-last-run">Last completed: none yet</div>
+            </article>
+
+            <article class="metric-card">
+              <div class="metric-head">
+                <span class="metric-label">Pipeline Readiness</span>
+                <span class="badge badge-forest" id="auto-ready-badge">Ready</span>
+              </div>
+              <div class="metric-value metric-value-sm" id="auto-ready-summary">All 3 services online</div>
+              <div class="metric-foot">Gmail · Local Gemma · Google Drive</div>
+            </article>
+          </div>
+
+          <div class="overview-columns">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">Daily Schedule Configuration</h2>
+                  <p class="panel-subtitle">Configure when MailMind AI synchronizes your Primary Inbox and uploads the daily `.docx` report to Google Drive.</p>
+                </div>
+              </div>
+              <form id="automation-form" class="stacked-form">
+                <label class="checkbox-card">
+                  <input name="SCHEDULE_ENABLED" type="checkbox">
+                  <div>
+                    <strong>Enable Automated Daily Reporting</strong>
+                    <span>Automatically fetch Primary Inbox emails, summarize with Gemma, and upload to a date-wise Google Drive folder every day.</span>
+                  </div>
+                </label>
+
+                <div class="form-grid-3">
+                  <label>
+                    <span>Scheduled Hour (0–23)</span>
+                    <input name="REPORT_HOUR" type="number" min="0" max="23" required>
+                  </label>
+                  <label>
+                    <span>Scheduled Minute (0–59)</span>
+                    <input name="REPORT_MINUTE" type="number" min="0" max="59" required>
+                  </label>
+                  <label>
+                    <span>Reporting Timezone (IANA)</span>
+                    <input name="REPORT_TIMEZONE" required placeholder="Asia/Kolkata">
+                  </label>
+                </div>
+
+                <label>
+                  <span>Computer Sleep &amp; Missed-Run Recovery</span>
+                  <select name="REPORT_CATCHUP">
+                    <option value="auto">Automatic — Run missed daily report immediately on startup or wake</option>
+                    <option value="offer">Prompt — Show a banner offering to execute the missed report</option>
+                    <option value="off">Disabled — Wait until the next day's scheduled time</option>
+                  </select>
+                </label>
+
+                <div class="form-actions">
+                  <button class="btn btn-primary" type="submit">Save Automation Schedule</button>
+                  <button id="auto-run-now" class="btn btn-secondary" type="button">Run Report Now</button>
+                  <button id="auto-retry-btn" class="btn btn-ghost" type="button" disabled>Retry Failed Run</button>
+                </div>
+              </form>
+            </section>
+
+            <div class="col-side">
+              <section class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h2 class="panel-title">Integration Readiness</h2>
+                    <p class="panel-subtitle">Live pre-flight checks before scheduled execution.</p>
+                  </div>
+                </div>
+                <div id="auto-readiness-list" class="stack-list"></div>
+              </section>
+
+              <section class="panel callout-panel">
+                <h3 class="panel-title">Local Operation Notice</h3>
+                <p class="panel-subtitle">MailMind AI runs 100% locally on your machine using Ollama and SQLite (`node:sqlite`). Keep the local backend process (`npm run dev`) running so `node-cron` and the 15-minute wake-recovery check can execute scheduled jobs.</p>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 7: ACTIVITY LOGS -->
+        <section id="view-logs" class="view-section">
+          <div class="filter-bar">
+            <div class="filter-group">
+              <label>
+                <span>Log Level</span>
+                <select id="logs-level-filter">
+                  <option value="">All Levels</option>
+                  <option value="info">Info</option>
+                  <option value="warn">Warning</option>
+                  <option value="error">Error</option>
+                </select>
+              </label>
+              <label>
+                <span>Search Logs</span>
+                <input id="logs-search" type="search" placeholder="Filter by message or run ID…">
+              </label>
+            </div>
+            <div class="filter-meta">
+              <span class="muted-text">OAuth tokens and email bodies are automatically redacted.</span>
+              <button id="logs-refresh-btn" class="btn btn-secondary btn-sm" type="button">Refresh Logs</button>
+            </div>
+          </div>
+
+          <section class="panel">
+            <div class="table-container">
+              <table class="data-table mono-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Level</th>
+                    <th>Run Correlation</th>
+                    <th>Event / Operation Message</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- VIEW 8: SETTINGS -->
+        <section id="view-settings" class="view-section">
+          <div class="settings-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">1. Google Account Connection</h2>
+                  <p class="panel-subtitle">Read-only Gmail (`gmail.readonly`) and Google Drive report upload authorization.</p>
+                </div>
+                <span class="badge" id="settings-google-badge">Checking</span>
+              </div>
+              <dl class="kv-list" id="settings-google-kv"></dl>
+              <div class="form-actions">
+                <a class="btn btn-secondary btn-sm" href="/oauth/start">Reconnect / Switch Gmail Account</a>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">2. Local AI Model Status (Ollama)</h2>
+                  <p class="panel-subtitle">All categorization and summarization runs locally via Gemma—no cloud AI APIs are ever called.</p>
+                </div>
+                <span class="badge" id="settings-ollama-badge">Checking</span>
+              </div>
+              <dl class="kv-list" id="settings-ollama-kv"></dl>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">3. Report &amp; Inbox Preferences</h2>
+                  <p class="panel-subtitle">Configured rules governing inbox filtering, deadline verification, and `.docx` formatting.</p>
+                </div>
+                <span class="badge badge-forest">Enforced</span>
+              </div>
+              <dl class="kv-list">
+                <div><dt>Inbox Scope</dt><dd>Primary Inbox only (`in:inbox category:primary`)</dd></div>
+                <div><dt>Excluded Tabs</dt><dd>Promotions, Updates, Social, Forums, Spam, Trash</dd></div>
+                <div><dt>Prompt Injection Guard</dt><dd>Untrusted email isolation (`&lt;untrusted_email&gt;`) + HTML/script stripping</dd></div>
+                <div><dt>Deadline Verification</dt><dd>Strict verbatim substring validation against email subject &amp; body</dd></div>
+                <div><dt>Fallback Policy</dt><dd>Rule-based categorization if Ollama is unreachable (`aiSummaryAvailable: false`)</dd></div>
+              </dl>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">4. Storage &amp; Google Drive Destination</h2>
+                  <p class="panel-subtitle">Local SQLite persistence and date-wise Google Drive folder organization.</p>
+                </div>
+                <span class="badge badge-forest" id="settings-drive-badge">Configured</span>
+              </div>
+              <dl class="kv-list" id="settings-storage-kv"></dl>
+            </section>
+          </div>
+        </section>
+
+      </main>
+    </div>
   </div>
   <script src="/app.js"></script>
 </body>
