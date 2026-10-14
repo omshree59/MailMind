@@ -205,6 +205,18 @@ function formatDuration(ms) {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+function formatRelativeTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (diffSec < 0 || diffSec < 60) return "just now";
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 /* ==========================================================================
    Human-Friendly Formatting Helpers (Clean Senders, Subjects & URLs)
    ========================================================================== */
@@ -275,7 +287,7 @@ function formatHumanReadableHtml(rawText) {
     const jobId = linkedInJobMatch[3];
     const label = prefix && prefix.toLowerCase() !== "view job" ? prefix : "Review LinkedIn Job Listing";
     return `
-      <span>💼 ${escapeHtml(label)} <span class="muted-text">(Job #${escapeHtml(jobId)})</span></span>
+      <span class="action-title-text">💼 ${escapeHtml(label)} <span class="muted-text">(Job #${escapeHtml(jobId)})</span></span>
       <a class="human-link-chip" href="${escapeHtml(fullUrl)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">🔗 Open on LinkedIn ↗</a>
     `;
   }
@@ -318,10 +330,10 @@ function formatHumanReadableHtml(rawText) {
     if (!cleanedProse) {
       return chipsHtml;
     }
-    return `<span>${escapeHtml(cleanedProse)}</span> ${chipsHtml}`;
+    return `<span class="action-title-text">${escapeHtml(cleanedProse)}</span> ${chipsHtml}`;
   }
 
-  return `<span>${escapeHtml(text)}</span>`;
+  return `<span class="action-title-text">${escapeHtml(text)}</span>`;
 }
 
 function importanceBadge(importance) {
@@ -380,40 +392,6 @@ async function apiJson(url, options) {
   return data;
 }
 
-/* ==========================================================================
-   Dynamic Email Emoji & Ambient Background Generator
-   ========================================================================== */
-
-function initDynamicEmailBackground() {
-  const container = el("dynamic-email-bg");
-  if (!container) return;
-
-  const emojis = [
-    { icon: "✉️", left: "6%", top: "14%", size: "1.65rem", opacity: 0.16, dur: "14s", delay: "0s" },
-    { icon: "📨", left: "88%", top: "12%", size: "1.8rem", opacity: 0.15, dur: "17s", delay: "-3s" },
-    { icon: "📬", left: "48%", top: "8%", size: "1.5rem", opacity: 0.14, dur: "16s", delay: "-6s" },
-    { icon: "📩", left: "18%", top: "48%", size: "1.6rem", opacity: 0.13, dur: "19s", delay: "-2s" },
-    { icon: "📅", left: "78%", top: "42%", size: "1.55rem", opacity: 0.14, dur: "15s", delay: "-8s" },
-    { icon: "📝", left: "34%", top: "74%", size: "1.5rem", opacity: 0.13, dur: "18s", delay: "-4s" },
-    { icon: "📎", left: "92%", top: "68%", size: "1.45rem", opacity: 0.14, dur: "16s", delay: "-7s" },
-    { icon: "🔔", left: "10%", top: "82%", size: "1.55rem", opacity: 0.14, dur: "20s", delay: "-5s" },
-    { icon: "📂", left: "64%", top: "84%", size: "1.65rem", opacity: 0.14, dur: "17s", delay: "-9s" },
-    { icon: "✨", left: "56%", top: "32%", size: "1.35rem", opacity: 0.16, dur: "13s", delay: "-1s" },
-    { icon: "🏷️", left: "26%", top: "24%", size: "1.4rem", opacity: 0.13, dur: "18s", delay: "-11s" },
-    { icon: "✅", left: "82%", top: "88%", size: "1.4rem", opacity: 0.13, dur: "15s", delay: "-4s" },
-  ];
-
-  container.innerHTML = emojis
-    .map(
-      (item) => `
-      <span
-        class="floating-mail-emoji"
-        style="left:${item.left};top:${item.top};font-size:${item.size};opacity:${item.opacity};animation-duration:${item.dur};animation-delay:${item.delay};"
-      >${item.icon}</span>
-    `,
-    )
-    .join("");
-}
 
 /* ==========================================================================
    Navigation & View Switching
@@ -687,7 +665,7 @@ function renderOverviewView() {
     ? `Last sync: ${status.lastSuccess.periodLabel} (${formatShortTime(status.lastSuccess.finishedAt)})`
     : "Last sync: no completed run yet";
 
-  // Priority Emails Requiring Attention (Clean Human Layout)
+  // Priority Emails Requiring Attention (Linear / Vercel Developer Style)
   const priorityContainer = el("ov-priority-list");
   const attentionEmails = messages
     .filter(
@@ -704,39 +682,50 @@ function renderOverviewView() {
   if (displayEmails.length === 0) {
     priorityContainer.innerHTML = `
       <div class="empty-state">
-        <p class="empty-title">No synchronized emails for this period yet</p>
-        <p class="empty-desc">Click "Run Report Now" in the top bar or "Test (3 Emails)" below to fetch and analyze your Primary Inbox.</p>
+        <p class="empty-title">No synchronized emails for this period</p>
+        <p class="empty-desc">Click "Run Report Now" in the top bar to fetch and analyze your Primary Inbox.</p>
       </div>
     `;
   } else {
     priorityContainer.innerHTML = displayEmails
       .map((msg) => {
         const deadlines = Array.isArray(msg.deadlines) ? msg.deadlines : [];
+        const importanceClass =
+          msg.importance === "Critical"
+            ? "priority-critical"
+            : msg.importance === "High"
+              ? "priority-high"
+              : "priority-normal";
+        const cat = msg.category || "Other";
+        const hasSummary = Boolean(msg.summary && msg.aiSummaryAvailable !== false);
+        const summaryHtml = hasSummary
+          ? formatHumanReadableHtml(msg.summary)
+          : `<span class="summary-unavailable">No summary yet</span>`;
+
         return `
-          <article class="stack-item" data-inspect-id="${escapeHtml(msg.gmailId)}" style="cursor:pointer">
+          <article class="stack-item email-row-card ${importanceClass}" data-inspect-id="${escapeHtml(msg.gmailId)}" style="cursor:pointer">
             <div class="stack-item-main">
-              <div class="stack-item-top-row">
-                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-                  <span class="sender-pill">${escapeHtml(senderDisplayName(msg.from))}</span>
-                  ${importanceBadge(msg.importance)}
-                  ${categoryBadge(msg.category)}
-                  ${msg.replyNeeded ? `<span class="badge badge-forest">💬 Reply Needed</span>` : ""}
+              <div class="stack-item-header-line">
+                <span class="email-sender-name">${escapeHtml(senderDisplayName(msg.from))}</span>
+                <span class="email-subject-line">${escapeHtml(cleanSubjectText(msg.subject))}</span>
+                <span class="email-time-mono">${escapeHtml(formatRelativeTime(msg.receivedAt))}</span>
+              </div>
+
+              <div class="stack-item-desc email-summary-clamp">
+                ${summaryHtml}
+                ${deadlines.length > 0 ? `<div class="deadline-row">⏰ ${escapeHtml(deadlines[0])}</div>` : ""}
+              </div>
+
+              <div class="email-footer-row">
+                <div class="email-chips-row">
+                  <span class="chip-item chip-cat">${escapeHtml(cat)}</span>
+                  ${msg.replyNeeded ? `<span class="chip-item chip-reply">💬 Reply needed</span>` : ""}
                 </div>
-                <span class="mono muted-text">🕒 ${escapeHtml(formatShortTime(msg.receivedAt))}</span>
+                <div class="email-actions-inline">
+                  <button class="btn btn-ghost btn-xs" type="button" data-inspect-id="${escapeHtml(msg.gmailId)}">Inspect</button>
+                  ${msg.gmailLink ? `<a class="icon-link-btn" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer" title="Open thread in Gmail" onclick="event.stopPropagation()">✉️ ↗</a>` : ""}
+                </div>
               </div>
-
-              <div class="stack-item-title">
-                <span>${escapeHtml(cleanSubjectText(msg.subject))}</span>
-              </div>
-
-              <div class="stack-item-desc">
-                ${formatHumanReadableHtml(msg.summary)}
-                ${deadlines.length > 0 ? `<div style="margin-top:6px;font-weight:600;color:var(--high-text)">⏰ Deadline: ${escapeHtml(deadlines[0])}</div>` : ""}
-              </div>
-            </div>
-            <div class="stack-item-actions">
-              <button class="btn btn-secondary btn-sm" type="button" data-inspect-id="${escapeHtml(msg.gmailId)}">🔍 Inspect</button>
-              ${msg.gmailLink ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">✉️ Gmail ↗</a>` : ""}
             </div>
           </article>
         `;
@@ -760,23 +749,23 @@ function renderOverviewView() {
         const hasDocx = Boolean(run.localPath);
         const hasDrive = Boolean(run.driveUrl);
         return `
-          <article class="stack-item">
+          <article class="stack-item report-row-card">
             <div class="stack-item-main">
               <div class="stack-item-title">
                 <span class="mono">📁 ${escapeHtml(run.periodLabel)}</span>
                 ${statusBadge(run.status)}
-                <span class="badge badge-neutral">${escapeHtml(run.kind)}</span>
+                <span class="chip-item">${escapeHtml(run.kind)}</span>
               </div>
               <div class="stack-item-meta">
                 <span>📧 ${run.totalProcessed} emails analyzed (${run.aiCount} Gemma AI, ${run.fallbackCount} fallback)</span>
                 <span>·</span>
-                <span>⏱️ ${escapeHtml(formatDuration(run.durationMs))}</span>
+                <span class="mono">⏱️ ${escapeHtml(formatDuration(run.durationMs))}</span>
               </div>
-              ${run.error ? `<div class="stack-item-desc" style="color:var(--critical-text)">${escapeHtml(run.error)}</div>` : ""}
+              ${run.error ? `<div class="stack-item-desc" style="color:var(--critical)">${escapeHtml(run.error)}</div>` : ""}
             </div>
             <div class="stack-item-actions">
-              ${hasDocx ? `<a class="btn btn-secondary btn-sm" href="/api/runs/${run.id}/docx">📄 Download .docx</a>` : ""}
-              ${hasDrive ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(run.driveUrl)}" target="_blank" rel="noreferrer">☁️ Google Drive ↗</a>` : ""}
+              ${hasDocx ? `<a class="btn btn-secondary btn-sm" href="/api/runs/${run.id}/docx">📄 .docx</a>` : ""}
+              ${hasDrive ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(run.driveUrl)}" target="_blank" rel="noreferrer">☁️ Drive ↗</a>` : ""}
             </div>
           </article>
         `;
@@ -784,7 +773,7 @@ function renderOverviewView() {
       .join("");
   }
 
-  // Detected Action Items (Human-Formatted, Max 2 per email in Overview so 1 LinkedIn alert doesn't flood)
+  // Detected Action Items (Compact divided list with priority dot, sender & relative time in mono)
   const actionsListEl = el("ov-actions-list");
   const extractedTasks = getAllExtractedTasks(messages, 2).slice(0, 7);
   if (extractedTasks.length === 0) {
@@ -797,21 +786,33 @@ function renderOverviewView() {
   } else {
     actionsListEl.innerHTML = extractedTasks
       .map(
-        (item) => `
-        <div class="compact-item" data-inspect-id="${escapeHtml(item.gmailId)}" style="cursor:pointer">
-          <div class="compact-item-top">
-            <div class="compact-item-title">
-              ${formatHumanReadableHtml(item.task)}
-              ${item.extraCount > 0 ? `<span class="badge badge-neutral" style="margin-left:6px">+${item.extraCount} more in email</span>` : ""}
+        (item) => {
+          const dotClass =
+            item.importance === "Critical"
+              ? "dot-critical"
+              : item.importance === "High"
+                ? "dot-high"
+                : "dot-normal";
+          return `
+          <div class="action-divider-item" data-inspect-id="${escapeHtml(item.gmailId)}" style="cursor:pointer">
+            <div class="action-top-line">
+              <span class="priority-dot ${dotClass}" title="${escapeHtml(item.importance)} priority"></span>
+              <div class="action-task-content">
+                <div class="action-task-title">
+                  ${formatHumanReadableHtml(item.task)}
+                  ${item.extraCount > 0 ? `<span class="badge badge-neutral">+${item.extraCount} more</span>` : ""}
+                </div>
+              </div>
             </div>
-            ${importanceBadge(item.importance)}
+            <div class="action-bottom-line mono">
+              <span class="action-sender">From: <strong>${escapeHtml(senderDisplayName(item.sender))}</strong></span>
+              <span class="action-time-or-dl">
+                ${item.deadline ? `<span class="deadline-highlight">⏰ ${escapeHtml(item.deadline)}</span>` : `<span class="muted-text">${escapeHtml(formatRelativeTime(item.receivedAt))}</span>`}
+              </span>
+            </div>
           </div>
-          <div class="compact-item-sub">
-            <span>From: <strong>${escapeHtml(senderDisplayName(item.sender))}</strong></span>
-            ${item.deadline ? `<span style="color:var(--high-text);font-weight:600">⏰ ${escapeHtml(item.deadline)}</span>` : `<span>${escapeHtml(formatShortTime(item.receivedAt))}</span>`}
-          </div>
-        </div>
-      `,
+        `;
+        },
       )
       .join("");
   }
@@ -826,7 +827,7 @@ function renderOverviewView() {
       .map(
         (log) => `
         <li class="timeline-item ${escapeHtml(log.level)}">
-          <div class="timeline-time">🕒 ${escapeHtml(formatShortTime(log.createdAt))} · ${escapeHtml(log.level.toUpperCase())}</div>
+          <div class="timeline-time mono">${escapeHtml(formatRelativeTime(log.createdAt))} · ${escapeHtml(log.level.toUpperCase())}</div>
           <div class="timeline-msg">${escapeHtml(log.message)}</div>
         </li>
       `,
@@ -1548,6 +1549,9 @@ function renderActiveView() {
   }
 }
 
+let prevBusyState = false;
+let prevLatestReportId = null;
+
 async function refreshAllData() {
   try {
     const [status, messagesData, logsData] = await Promise.all([
@@ -1555,6 +1559,19 @@ async function refreshAllData() {
       apiJson("/api/messages"),
       apiJson("/api/logs"),
     ]);
+
+    // Check if an auto-sync or manual sync just finished to show an instant update toast
+    if (prevBusyState && !status.busy && status.latestReport && status.latestReport.id !== prevLatestReportId) {
+      const rep = status.latestReport;
+      if (rep.status === "completed") {
+        showToast(`✨ Synced! ${rep.periodLabel} report (${rep.totalProcessed} emails) analyzed by Gemma & uploaded to Google Drive.`);
+      }
+      prevLatestReportId = rep.id;
+    } else if (status.latestReport && !prevLatestReportId) {
+      prevLatestReportId = status.latestReport.id;
+    }
+    prevBusyState = Boolean(status.busy);
+
     state.status = status;
     state.messages = messagesData.messages || [];
     state.logs = Array.isArray(logsData) ? logsData : logsData.logs || [];
@@ -1772,7 +1789,33 @@ function initEvents() {
   el("logs-refresh-btn")?.addEventListener("click", () => refreshAllData());
 }
 
-initDynamicEmailBackground();
+function initTheme() {
+  const savedTheme = localStorage.getItem("mailmind_theme") || "dark";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+
+  const toggleBtn = el("theme-toggle-btn");
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("mailmind_theme", next);
+    });
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      const searchInput = el("global-search");
+      if (searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select?.();
+      }
+    }
+  });
+}
+
+initTheme();
 initEvents();
 refreshAllData();
 setInterval(refreshAllData, 5000);
