@@ -301,6 +301,60 @@ export class MailDb {
     return rows.map(mapMessage);
   }
 
+  /**
+   * Find messages that need AI summary (failed, pending, or analyzed with rule fallback)
+   * so they can be retried automatically when Ollama/Gemma is connected.
+   */
+  listFallbackMessages(limit = 100): Array<StoredMessage & { periodLabel: string }> {
+    const rows = this.db.prepare(`
+      SELECT m.*, r.period_label
+      FROM run_messages m
+      JOIN runs r ON m.run_id = r.id
+      WHERE (
+        m.status = 'failed'
+        OR m.status = 'pending'
+        OR m.analysis_json IS NULL
+        OR json_extract(m.analysis_json, '$.aiSummaryAvailable') = 0
+        OR json_extract(m.analysis_json, '$.aiSummaryAvailable') IS NULL
+      )
+      AND m.body_text IS NOT NULL
+      AND length(trim(m.body_text)) > 0
+      ORDER BY m.received_at DESC
+      LIMIT ?
+    `).all(limit) as Array<Parameters<typeof mapMessage>[0] & { period_label: string }>;
+    return rows.map((row) => ({ ...mapMessage(row), periodLabel: row.period_label }));
+  }
+
+  countFallbackMessages(): number {
+    const row = this.db.prepare(`
+      SELECT COUNT(*) as cnt
+      FROM run_messages m
+      JOIN runs r ON m.run_id = r.id
+      WHERE (
+        m.status = 'failed'
+        OR m.status = 'pending'
+        OR m.analysis_json IS NULL
+        OR json_extract(m.analysis_json, '$.aiSummaryAvailable') = 0
+        OR json_extract(m.analysis_json, '$.aiSummaryAvailable') IS NULL
+      )
+      AND m.body_text IS NOT NULL
+      AND length(trim(m.body_text)) > 0
+    `).get() as { cnt: number };
+    return row.cnt;
+  }
+
+  getMessageByGmailId(gmailId: string): (StoredMessage & { periodLabel: string }) | null {
+    const row = this.db.prepare(`
+      SELECT m.*, r.period_label
+      FROM run_messages m
+      JOIN runs r ON m.run_id = r.id
+      WHERE m.gmail_id = ?
+      ORDER BY m.received_at DESC
+      LIMIT 1
+    `).get(gmailId) as (Parameters<typeof mapMessage>[0] & { period_label: string }) | undefined;
+    return row ? { ...mapMessage(row), periodLabel: row.period_label } : null;
+  }
+
   updateMessage(runId: string, gmailId: string, patch: { analysisJson?: string | null; status?: string; error?: string | null }): void {
     const sets: string[] = [];
     const values: Array<string | null> = [];

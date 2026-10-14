@@ -164,6 +164,14 @@
           <span class="badge badge-forest" id="running-stage-badge">Processing</span>
         </section>
 
+        <section id="retry-banner" class="alert-banner info-alert hidden" aria-live="polite">
+          <div class="alert-body">
+            <strong>⚡ AI Summaries Updating with Gemma</strong>
+            <span id="retry-banner-text">Waiting emails are being summarized by local Gemma AI...</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="retry-banner-action" type="button">Retry All Now</button>
+        </section>
+
         <div id="toast-bar" class="toast-bar hidden" role="status" aria-live="polite"></div>
       </div>
 
@@ -532,6 +540,7 @@
                 <div class="form-actions">
                   <button class="btn btn-primary" type="submit">Save Automation Schedule</button>
                   <button id="auto-run-now" class="btn btn-secondary" type="button">Run Report Now</button>
+                  <button id="auto-retry-summaries-btn" class="btn btn-secondary" type="button">⚡ Retry AI Summaries</button>
                   <button id="auto-retry-btn" class="btn btn-ghost" type="button" disabled>Retry Failed Run</button>
                 </div>
               </form>

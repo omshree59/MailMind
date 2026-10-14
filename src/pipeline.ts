@@ -345,3 +345,139 @@ export function localReportSaver(directory: string): (filename: string, data: Bu
     return full;
   };
 }
+
+/**
+ * Retry AI summaries for messages that previously fell back to rule-based analysis.
+ * Called automatically on startup (once Ollama is confirmed online) and periodically.
+ * Upgrades fallback summaries to real AI summaries without re-running the full pipeline.
+ */
+export async function retryStaleSummaries(options: {
+  db: MailDb;
+  client: ChatClient;
+  config: AppConfig;
+  probe: () => Promise<{ ok: boolean; installed: boolean; error?: string }>;
+  batchSize?: number;
+}): Promise<{ retried: number; upgraded: number; skipped: number; remaining: number }> {
+  const { db, client, config, probe } = options;
+  const batchSize = options.batchSize ?? 50;
+
+  // First check that Ollama is actually available
+  const status = await probe();
+  if (!status.ok || !status.installed) {
+    return { retried: 0, upgraded: 0, skipped: 0, remaining: db.countFallbackMessages() };
+  }
+
+  const fallbackMessages = db.listFallbackMessages(batchSize);
+  if (fallbackMessages.length === 0) {
+    return { retried: 0, upgraded: 0, skipped: 0, remaining: 0 };
+  }
+
+  db.addLog("info", `Retrying AI summaries for ${fallbackMessages.length} message(s) that need AI analysis.`);
+
+  let upgraded = 0;
+  let skipped = 0;
+  let consecutiveFailures = 0;
+
+  for (const msg of fallbackMessages) {
+    if (consecutiveFailures >= 3) {
+      // Check if Ollama itself went down
+      const check = await probe();
+      if (!check.ok) {
+        db.addLog("warn", `Pausing summary retry batch: Ollama is offline (${check.error || "unavailable"}).`);
+        skipped += fallbackMessages.length - (upgraded + skipped);
+        break;
+      }
+      consecutiveFailures = 0;
+    }
+
+    const email: SanitizedEmail = {
+      gmailId: msg.gmailId,
+      threadId: msg.threadId,
+      from: msg.fromAddr,
+      subject: msg.subject,
+      receivedAt: msg.receivedAt,
+      body: msg.bodyText,
+      truncated: msg.truncated === 1,
+      gmailLink: `https://mail.google.com/mail/u/0/#all/${msg.gmailId}`,
+    };
+
+    try {
+      const analysis = await analyzeEmail(email, client, config.ollamaInvalidRetries + 1);
+      if (analysis.aiSummaryAvailable) {
+        db.updateMessage(msg.runId, msg.gmailId, {
+          status: "analyzed",
+          analysisJson: JSON.stringify(analysis),
+          error: null,
+        });
+        upgraded++;
+        consecutiveFailures = 0;
+
+        // Update run stats
+        const run = db.getRun(msg.runId);
+        if (run) {
+          db.updateRun(msg.runId, {
+            aiCount: run.aiCount + 1,
+            fallbackCount: Math.max(0, run.fallbackCount - 1),
+          });
+        }
+      } else {
+        consecutiveFailures++;
+        skipped++;
+      }
+    } catch {
+      consecutiveFailures++;
+      skipped++;
+    }
+  }
+
+  const remaining = db.countFallbackMessages();
+  if (upgraded > 0) {
+    db.addLog("info", `Summary retry batch complete: ${upgraded} upgraded to AI. Remaining needing AI: ${remaining}.`);
+  }
+
+  return { retried: fallbackMessages.length, upgraded, skipped, remaining };
+}
+
+/**
+ * Retry a single email summary on-demand (e.g. from UI "Retry with Gemma AI" button).
+ */
+export async function retrySingleSummary(options: {
+  db: MailDb;
+  client: ChatClient;
+  config: AppConfig;
+  gmailId: string;
+}): Promise<EmailAnalysis> {
+  const { db, client, config, gmailId } = options;
+  const msg = db.getMessageByGmailId(gmailId);
+  if (!msg) {
+    throw new Error(`Message ${gmailId} not found in database.`);
+  }
+
+  const email: SanitizedEmail = {
+    gmailId: msg.gmailId,
+    threadId: msg.threadId,
+    from: msg.fromAddr,
+    subject: msg.subject,
+    receivedAt: msg.receivedAt,
+    body: msg.bodyText,
+    truncated: msg.truncated === 1,
+    gmailLink: `https://mail.google.com/mail/u/0/#all/${msg.gmailId}`,
+  };
+
+  const analysis = await analyzeEmail(email, client, config.ollamaInvalidRetries + 1);
+  db.updateMessage(msg.runId, msg.gmailId, {
+    status: "analyzed",
+    analysisJson: JSON.stringify(analysis),
+    error: null,
+  });
+
+  const run = db.getRun(msg.runId);
+  if (run && analysis.aiSummaryAvailable) {
+    db.updateRun(msg.runId, {
+      aiCount: run.aiCount + 1,
+      fallbackCount: Math.max(0, run.fallbackCount - 1),
+    });
+  }
+
+  return analysis;
+}

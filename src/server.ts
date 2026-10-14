@@ -8,7 +8,7 @@ import type { MailDb } from "./db";
 import { OllamaClient, analysisJsonSchema, probeOllama } from "./analyze";
 import { checkGoogle, authUrl, disconnectGoogle, exchangeCode, fetchPeriodMessages, driveApi } from "./google";
 import { createRootFolder, uploadReport } from "./drive";
-import { localReportSaver, startReport, type PipelineDeps } from "./pipeline";
+import { localReportSaver, startReport, retryStaleSummaries, retrySingleSummary, type PipelineDeps } from "./pipeline";
 import { renderReportDocx } from "./docx-report";
 import { missedPeriodLabel, nextScheduledInstant, periodFromDates, previousReportingPeriod } from "./period";
 import type { RunKind } from "./types";
@@ -97,6 +97,7 @@ export function createApp(runtime: AppRuntime): express.Express {
       : null;
     const missedDone = missedLabel ? runtime.db.latestCompletedForLabel(missedLabel) : null;
     const current = runtime.db.listRunning()[0] ?? null;
+    const pendingSummaryRetries = runtime.db.countFallbackMessages();
     res.json({
       config: settingsFromConfig(config),
       driveConfigured: Boolean(config.driveFolderId),
@@ -111,6 +112,7 @@ export function createApp(runtime: AppRuntime): express.Express {
       failedRun: runtime.db.latestFailed(),
       missed: missedLabel && !missedDone ? { periodLabel: missedLabel } : null,
       runs: runtime.db.listRuns(50),
+      pendingSummaryRetries,
     });
   });
 
@@ -330,6 +332,67 @@ export function createApp(runtime: AppRuntime): express.Express {
       return;
     }
     res.status(202).json({ started: true, kind, periodLabel: period.label });
+  });
+
+  // --- Summary retry endpoints ---
+
+  app.get("/api/summaries/pending", (_req, res) => {
+    const count = runtime.db.countFallbackMessages();
+    res.json({ pendingCount: count });
+  });
+
+  app.post("/api/summaries/retry", async (_req, res) => {
+    const config = runtime.getConfig();
+    const count = runtime.db.countFallbackMessages();
+    if (count === 0) {
+      res.json({ message: "No fallback summaries to retry.", retried: 0, upgraded: 0, skipped: 0 });
+      return;
+    }
+    const deps = buildPipelineDeps(config, runtime.db);
+    if (!deps.client) {
+      res.status(503).json({ error: "Ollama is not available. Cannot retry summaries." });
+      return;
+    }
+    try {
+      const result = await retryStaleSummaries({
+        db: runtime.db,
+        client: deps.client,
+        config,
+        probe: deps.probe,
+      });
+      res.json({
+        message: `Retried ${result.retried} summaries: ${result.upgraded} upgraded to AI, ${result.skipped} still pending.`,
+        ...result,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Retry failed." });
+    }
+  });
+
+  app.post("/api/messages/:gmailId/retry", async (req, res) => {
+    const config = runtime.getConfig();
+    const deps = buildPipelineDeps(config, runtime.db);
+    if (!deps.client) {
+      res.status(503).json({ error: "Ollama is not available. Please ensure Ollama and Gemma are running." });
+      return;
+    }
+    try {
+      const probe = await deps.probe();
+      if (!probe.ok || !probe.installed) {
+        res.status(503).json({ error: probe.error || "Ollama model is not ready." });
+        return;
+      }
+      const analysis = await retrySingleSummary({
+        db: runtime.db,
+        client: deps.client,
+        config,
+        gmailId: req.params.gmailId,
+      });
+      runtime.db.addLog("info", `AI summary generated for message ${req.params.gmailId}.`);
+      res.json({ success: true, analysis });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to generate AI summary." });
+    }
   });
 
   return app;

@@ -608,6 +608,40 @@ function renderShellStatus() {
     }
   }
 
+  // Summary Retry banner
+  const retryBanner = el("retry-banner");
+  if (retryBanner) {
+    const pendingCount = Number(status.pendingSummaryRetries || 0);
+    if (pendingCount > 0 && !status.busy) {
+      retryBanner.classList.remove("hidden");
+      const txt = el("retry-banner-text");
+      if (txt) {
+        txt.textContent = `${pendingCount} email(s) waiting for Gemma AI summaries. Automatically retrying in background...`;
+      }
+      const actBtn = el("retry-banner-action");
+      if (actBtn && !actBtn.dataset.bound) {
+        actBtn.dataset.bound = "true";
+        actBtn.addEventListener("click", async () => {
+          actBtn.disabled = true;
+          actBtn.textContent = "⏳ Retrying...";
+          try {
+            const res = await fetch("/api/summaries/retry", { method: "POST" });
+            const data = await res.json();
+            showToast(data.message || "Summary retry initiated!");
+            await refreshAllData();
+          } catch (e) {
+            showToast(e.message, "error");
+          } finally {
+            actBtn.disabled = false;
+            actBtn.textContent = "Retry All Now";
+          }
+        });
+      }
+    } else {
+      retryBanner.classList.add("hidden");
+    }
+  }
+
   const topRunBtn = el("top-run-now");
   if (topRunBtn) {
     topRunBtn.disabled = Boolean(status.busy);
@@ -974,7 +1008,8 @@ function renderInboxDetail(msg) {
         <div><strong>Sender:</strong> ${escapeHtml(senderDisplayName(msg.from))} <span class="muted-text">(${escapeHtml(msg.from)})</span></div>
         <div><strong>Received:</strong> ${escapeHtml(formatDateTime(msg.receivedAt))} · <strong>Report Period:</strong> <span class="mono">${escapeHtml(msg.periodLabel)}</span></div>
       </div>
-      <div class="detail-actions">
+      <div class="detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${!msg.aiSummaryAvailable ? `<button id="detail-retry-summary-btn" class="btn btn-secondary btn-sm" type="button">⚡ Retry AI Summary with Gemma</button>` : ""}
         ${msg.gmailLink ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(msg.gmailLink)}" target="_blank" rel="noreferrer">✉️ Open Original in Gmail ↗</a>` : ""}
       </div>
     </div>
@@ -1013,6 +1048,27 @@ function renderInboxDetail(msg) {
       }
     </div>
   `;
+
+  const singleRetryBtn = el("detail-retry-summary-btn");
+  if (singleRetryBtn) {
+    singleRetryBtn.addEventListener("click", async () => {
+      singleRetryBtn.disabled = true;
+      singleRetryBtn.textContent = "⏳ Analyzing with Gemma AI...";
+      try {
+        const res = await fetch(`/api/messages/${encodeURIComponent(msg.gmailId)}/retry`, { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Retry failed");
+        showToast("✨ Gemma AI summary generated successfully!", "success");
+        await refreshAllData();
+        const updatedMsg = state.messages.find(m => m.gmailId === msg.gmailId);
+        if (updatedMsg) renderInboxDetail(updatedMsg);
+      } catch (err) {
+        showToast(err.message, "error");
+        singleRetryBtn.disabled = false;
+        singleRetryBtn.textContent = "⚡ Retry AI Summary with Gemma";
+      }
+    });
+  }
 }
 
 function inspectEmailInInbox(gmailId) {
@@ -1308,6 +1364,28 @@ function renderAutomationView() {
   const retryBtn = el("auto-retry-btn");
   if (retryBtn) {
     retryBtn.disabled = !status.failedRun || Boolean(status.busy);
+  }
+
+  const retrySummariesBtn = el("auto-retry-summaries-btn");
+  if (retrySummariesBtn) {
+    const pending = Number(status?.pendingSummaryRetries || 0);
+    retrySummariesBtn.textContent = pending > 0 ? `⚡ Retry AI Summaries (${pending})` : "⚡ Retry AI Summaries";
+    retrySummariesBtn.disabled = pending === 0 || Boolean(status.busy);
+    if (!retrySummariesBtn.dataset.bound) {
+      retrySummariesBtn.dataset.bound = "true";
+      retrySummariesBtn.addEventListener("click", async () => {
+        retrySummariesBtn.disabled = true;
+        retrySummariesBtn.textContent = "⏳ Retrying summaries with Gemma...";
+        try {
+          const res = await fetch("/api/summaries/retry", { method: "POST" });
+          const data = await res.json();
+          showToast(data.message || "Summary retry initiated!");
+          await refreshAllData();
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      });
+    }
   }
 
   const form = el("automation-form");

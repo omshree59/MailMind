@@ -2,12 +2,12 @@ import "dotenv/config";
 import path from "path";
 import { configFromEnv, applySettings, ensureDataDir, readEnvFile } from "./config";
 import { openDatabase, pidAlive, recoverInterruptedRuns } from "./db";
-import { ensureOllamaRunning, probeOllama } from "./analyze";
+import { ensureOllamaRunning, probeOllama, OllamaClient, analysisJsonSchema } from "./analyze";
 import { checkGoogle } from "./google";
 import { buildPipelineDeps, createApp, listen } from "./server";
 import { startScheduler } from "./scheduler";
 import { currentCalendarPeriod, mostRecentSlot, previousReportingPeriod } from "./period";
-import { startReport } from "./pipeline";
+import { startReport, retryStaleSummaries } from "./pipeline";
 
 async function main(): Promise<void> {
   const envConfig = configFromEnv();
@@ -134,8 +134,88 @@ async function main(): Promise<void> {
     db.addLog("warn", "Google account is not connected yet. Open dashboard to connect Gmail & Google Drive.");
   }
 
+  // 3. Continuous Reactive Summary Retry Engine
+  // As soon as Ollama is connected, it automatically retries all emails that failed
+  // to get AI summaries, repeating until all are successfully summarized.
+  let isRetrying = false;
+  let wasOllamaOnline = ollama.ok && ollama.installed;
+
+  const runRetry = async () => {
+    if (isRetrying) return;
+    const activeConfig = getConfig();
+    const fallbackCount = db.countFallbackMessages();
+    if (fallbackCount === 0) return;
+
+    // Check if Ollama is online and ready
+    const probe = await probeOllama(activeConfig.ollamaBaseUrl, activeConfig.ollamaModel, 3000);
+    if (!probe.ok || !probe.installed) return;
+
+    isRetrying = true;
+    try {
+      const client = new OllamaClient({
+        baseUrl: activeConfig.ollamaBaseUrl,
+        model: activeConfig.ollamaModel,
+        schema: analysisJsonSchema as unknown as Record<string, unknown>,
+        networkRetries: activeConfig.ollamaNetworkRetries,
+      });
+
+      const result = await retryStaleSummaries({
+        db,
+        client,
+        config: activeConfig,
+        probe: () => probeOllama(activeConfig.ollamaBaseUrl, activeConfig.ollamaModel, 3000),
+        batchSize: 20,
+      });
+
+      if (result.upgraded > 0) {
+        console.log(`[MailMind] Upgraded ${result.upgraded}/${result.retried} email summaries with Gemma AI (${result.remaining} remaining)`);
+      }
+
+      // If more unsummarized emails remain and Ollama is healthy, immediately queue next batch!
+      if (result.remaining > 0 && result.upgraded > 0) {
+        setTimeout(() => { void runRetry(); }, 1500);
+      }
+    } catch (err) {
+      db.addLog("warn", `Summary retry batch error: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      isRetrying = false;
+    }
+  };
+
+  // Connection Watchdog: poll every 10 seconds.
+  // Detects when Ollama connects or reconnects, and immediately retries all pending summaries.
+  const connectionWatchdog = setInterval(async () => {
+    try {
+      const activeConfig = getConfig();
+      const probe = await probeOllama(activeConfig.ollamaBaseUrl, activeConfig.ollamaModel, 2500);
+      const isOnline = probe.ok && probe.installed;
+
+      if (isOnline && !wasOllamaOnline) {
+        wasOllamaOnline = true;
+        db.addLog("info", `🦙 Ollama connection established. Auto-retrying all unsummarized emails with Gemma AI...`);
+        console.log("[MailMind] Ollama connection established! Triggering automatic summary retry for all pending emails...");
+        void runRetry();
+      } else if (!isOnline) {
+        wasOllamaOnline = false;
+      }
+
+      // If online and there are unsummarized/failed messages, keep retrying
+      if (isOnline && db.countFallbackMessages() > 0) {
+        void runRetry();
+      }
+    } catch {
+      // Quietly ignore watchdog probe errors
+    }
+  }, 10_000);
+
+  // Initial startup trigger after 4 seconds (allows initial sync queue to start)
+  setTimeout(() => {
+    void runRetry();
+  }, 4000);
+
   console.log(`MailMind listening at http://127.0.0.1:${envConfig.port}`);
   const shutdown = () => {
+    clearInterval(connectionWatchdog);
     scheduler.stop();
     server.close();
     db.releaseLock(`pid:${process.pid}`);
