@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "check:ollama": "tsx src/check-ollama.ts",
     "check:gemma": "tsx src/check-gemma.ts",
-    "build:exe": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:exe /out:MailMind.exe /optimize+ MailMindLauncher.cs"
+    "build:exe": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:exe /win32icon:app.ico /out:MailMind.exe /optimize+ MailMindLauncher.cs"
   },
   "dependencies": {
     "docx": "^9.5.0",
