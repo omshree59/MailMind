@@ -2,7 +2,7 @@ import "dotenv/config";
 import path from "path";
 import { configFromEnv, applySettings, ensureDataDir, readEnvFile } from "./config";
 import { openDatabase, pidAlive, recoverInterruptedRuns } from "./db";
-import { probeOllama } from "./analyze";
+import { ensureOllamaRunning, probeOllama } from "./analyze";
 import { checkGoogle } from "./google";
 import { buildPipelineDeps, createApp, listen } from "./server";
 import { startScheduler } from "./scheduler";
@@ -91,16 +91,17 @@ async function main(): Promise<void> {
   const server = listen(app, envConfig.port);
 
   const config = getConfig();
-  const ollama = await probeOllama(config.ollamaBaseUrl, config.ollamaModel);
+  const ollama = await ensureOllamaRunning(config.ollamaBaseUrl, config.ollamaModel);
   db.addLog(ollama.ok && ollama.installed ? "info" : "warn", ollama.error || `Ollama model ${config.ollamaModel} is available.`);
   const google = await checkGoogle(config);
   db.addLog(google.state === "connected" ? "info" : "warn", `Google status: ${google.state}.`);
 
-  if (config.scheduleEnabled && config.catchup === "auto" && google.state === "connected") {
+  if (google.state === "connected") {
     const slot = mostRecentSlot(new Date(), config.timezone, config.hour, config.minute);
     const period = previousReportingPeriod(slot, config.timezone);
-    if (!db.latestCompletedForLabel(period.label)) {
-      db.addLog("info", `Starting missed report for ${period.label}.`);
+    const alreadyCompleted = db.latestCompletedForLabel(period.label);
+    if (!alreadyCompleted) {
+      db.addLog("info", `Auto-sync: Generating daily summary report for ${period.label} and uploading to Google Drive.`);
       enqueue(async () => {
         const activeConfig = getConfig();
         await startReport({
@@ -112,7 +113,11 @@ async function main(): Promise<void> {
           period,
         });
       });
+    } else {
+      db.addLog("info", `Daily report for ${period.label} is already up to date on Google Drive.`);
     }
+  } else {
+    db.addLog("warn", "Google account is not connected yet. Open dashboard to connect Gmail & Google Drive.");
   }
 
   console.log(`MailMind listening at http://127.0.0.1:${envConfig.port}`);

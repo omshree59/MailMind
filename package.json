@@ -12,7 +12,8 @@
     "test": "node --disable-warning=ExperimentalWarning --import tsx --test tests/period.test.ts tests/analyze.test.ts tests/gmail.test.ts tests/drive.test.ts tests/pipeline.test.ts tests/docx.test.ts",
     "typecheck": "tsc --noEmit",
     "check:ollama": "tsx src/check-ollama.ts",
-    "check:gemma": "tsx src/check-gemma.ts"
+    "check:gemma": "tsx src/check-gemma.ts",
+    "build:exe": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:exe /out:MailMind.exe /optimize+ MailMindLauncher.cs"
   },
   "dependencies": {
     "docx": "^9.5.0",

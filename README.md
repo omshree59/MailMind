@@ -142,6 +142,20 @@ REPORT_CATCHUP=auto
 6. Copy the Client ID and Client Secret into your `.env` file.
 
 ### 5. Run MailMind AI
+
+You can start MailMind AI in two ways:
+
+#### Option A: One-Click Windows Executable (`MailMind.exe`) ⚡
+Simply double-click **`MailMind.exe`** in the application folder!
+It automatically:
+1. 🦙 Checks if **Ollama** is running, and starts `ollama serve` in the background if offline.
+2. 🧠 Verifies the local **Gemma** model is ready.
+3. 🚀 Launches the **MailMind AI** server and opens the dashboard in your default browser.
+4. 📬 **Auto-syncs** your Primary Inbox, extracts tasks/deadlines with Gemma, compiles the executive Word (`.docx`) report, and uploads it to your date-wise Google Drive folder!
+
+*(To recompile `MailMind.exe` at any time, run `npm run build:exe`)*
+
+#### Option B: Terminal Command
 ```powershell
 # Start the local server & scheduler
 npm run dev

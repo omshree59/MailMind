@@ -224,6 +224,35 @@ export async function probeOllama(baseUrl: string, model: string, timeoutMs = 50
   }
 }
 
+export async function ensureOllamaRunning(baseUrl: string, model: string): Promise<OllamaProbe> {
+  let probe = await probeOllama(baseUrl, model, 3000);
+  if (probe.ok) return probe;
+
+  // If local default URL, try to spawn ollama serve in background
+  if (baseUrl.includes("127.0.0.1") || baseUrl.includes("localhost")) {
+    try {
+      const { spawn } = await import("child_process");
+      const child = spawn("ollama", ["serve"], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      child.unref();
+
+      // Poll up to 10 seconds for Ollama to become available
+      for (let i = 0; i < 10; i += 1) {
+        await new Promise((r) => setTimeout(r, 1000));
+        probe = await probeOllama(baseUrl, model, 2000);
+        if (probe.ok) break;
+      }
+    } catch {
+      // Ignore spawn errors; probe will report current status
+    }
+  }
+
+  return probe;
+}
+
 export class OllamaClient implements ChatClient {
   constructor(
     private readonly options: {
