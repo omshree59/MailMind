@@ -6,7 +6,7 @@ import { ensureOllamaRunning, probeOllama } from "./analyze";
 import { checkGoogle } from "./google";
 import { buildPipelineDeps, createApp, listen } from "./server";
 import { startScheduler } from "./scheduler";
-import { mostRecentSlot, previousReportingPeriod } from "./period";
+import { currentCalendarPeriod, mostRecentSlot, previousReportingPeriod } from "./period";
 import { startReport } from "./pipeline";
 
 async function main(): Promise<void> {
@@ -97,11 +97,12 @@ async function main(): Promise<void> {
   db.addLog(google.state === "connected" ? "info" : "warn", `Google status: ${google.state}.`);
 
   if (google.state === "connected") {
+    // 1. Check if previous reporting slot (yesterday) needs backfill
     const slot = mostRecentSlot(new Date(), config.timezone, config.hour, config.minute);
-    const period = previousReportingPeriod(slot, config.timezone);
-    const alreadyCompleted = db.latestCompletedForLabel(period.label);
-    if (!alreadyCompleted) {
-      db.addLog("info", `Auto-sync: Generating daily summary report for ${period.label} and uploading to Google Drive.`);
+    const yesterdayPeriod = previousReportingPeriod(slot, config.timezone);
+    const yesterdayDone = db.latestCompletedForLabel(yesterdayPeriod.label);
+    if (!yesterdayDone) {
+      db.addLog("info", `Auto-sync: Generating missed daily report for ${yesterdayPeriod.label} and uploading to Google Drive.`);
       enqueue(async () => {
         const activeConfig = getConfig();
         await startReport({
@@ -110,12 +111,25 @@ async function main(): Promise<void> {
           deps: buildPipelineDeps(activeConfig, db),
           lockOwner: `pid:${process.pid}`,
           kind: "scheduled",
-          period,
+          period: yesterdayPeriod,
         });
       });
-    } else {
-      db.addLog("info", `Daily report for ${period.label} is already up to date on Google Drive.`);
     }
+
+    // 2. Also auto-sync today's latest primary emails
+    const todayPeriod = currentCalendarPeriod(new Date(), config.timezone);
+    db.addLog("info", `Auto-sync: Fetching and summarizing today's latest primary emails (${todayPeriod.label}).`);
+    enqueue(async () => {
+      const activeConfig = getConfig();
+      await startReport({
+        db,
+        config: activeConfig,
+        deps: buildPipelineDeps(activeConfig, db),
+        lockOwner: `pid:${process.pid}`,
+        kind: "manual",
+        period: todayPeriod,
+      });
+    });
   } else {
     db.addLog("warn", "Google account is not connected yet. Open dashboard to connect Gmail & Google Drive.");
   }

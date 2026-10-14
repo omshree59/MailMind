@@ -102,6 +102,11 @@ export function previousReportingPeriod(now: Date, timeZone: string): Period {
   return periodForDay(yesterday, timeZone);
 }
 
+export function currentCalendarPeriod(now: Date, timeZone: string): Period {
+  const today = zonedParts(now, timeZone);
+  return periodForDay(today, timeZone);
+}
+
 export function periodFromDates(fromYmd: string, toYmd: string, timeZone: string): Period {
   const from = parseYmd(fromYmd);
   const to = parseYmd(toYmd);
